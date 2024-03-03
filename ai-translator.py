@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
     print_time()
     print("+++++++++++++ saving text to speech model/tokenizer +++++++++++")
-    # save(processor, "processors/suno/bark")
+    save(processor, "processors/suno/bark")
     save(model, "models/suno/bark")
     save(tokenizer, "tokenizers/suno/bark")
 
