@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import base64
-from json import JSONEncoder, JSONDecoder
+
+from json import JSONEncoder
 
 import dotenv
 import numpy
@@ -71,8 +71,18 @@ def get_translation_texts(list_of_dicts):
     return [d['translation_text'] for d in list_of_dicts]
 
 
-def play_audio_output(tensor):
-    pass
+def play_audio_output(audio):
+    paudio = pyaudio.PyAudio()
+    stream = paudio.open(format=paudio.get_format_from_width(4),
+                         channels=1,
+                         rate=24000,
+                         output=True)
+    stream.write(audio, len(audio))
+    # for i, line in enumerate(audio):
+    #     stream.write(line, len(line))
+    stream.stop_stream()
+    stream.close()
+    paudio.terminate()
 
 
 def save(to_save, dest_dir):
@@ -115,75 +125,64 @@ if __name__ == '__main__':
     #using static text strings for now.
 
     # english to spanish text pipeline
-    print_time()
     print("+++++++++ building e to s model/tokenizer +++++++++++++")
     e_to_s_model = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "models/Helsinki-NLP/opus-mt-tc-big-en-es", MarianMTModel)
     e_to_s_tokenizer = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es", AutoTokenizer)
 
-    print_time()
     print("+++++++++ saving e to s model/tokenizer ++++++++++++++")
     save(e_to_s_model, "models/Helsinki-NLP/opus-mt-tc-big-en-es")
     save(e_to_s_tokenizer, "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es")
 
-    print_time()
     print("+++++++++ creating e to s translation pipeline +++++++++")
     translator = pipeline("translation", model=e_to_s_model, tokenizer=e_to_s_tokenizer)
 
-
     # text to speech pipeline
-    print_time()
     print("++++++++++++ building text to speech model/tokenizer ++++++++++")
     voice_preset = "v2/es_speaker_1"
-    processor = get_model("suno/bark", "processors/suno/bark", AutoProcessor)
-    model = get_model("suno/bark", "models/suno/bark", AutoModel)
-    tokenizer = get_model("suno/bark", "tokenizers/suno/bark", AutoTokenizer)
+    audio_processor = get_model("suno/bark", "processors/suno/bark", AutoProcessor)
+    audio_model = get_model("suno/bark", "models/suno/bark", AutoModel)
+    # audio_tokenizer = get_model("suno/bark", "tokenizers/suno/bark", AutoTokenizer)
 
-    print_time()
-    print("+++++++++++++ saving text to speech model/tokenizer +++++++++++")
-    save(processor, "processors/suno/bark")
-    save(model, "models/suno/bark")
-    save(tokenizer, "tokenizers/suno/bark")
+    print("+++++++++++++ saving text to speech model/processor +++++++++++")
+    save(audio_processor, "processors/suno/bark")
+    save(audio_model, "models/suno/bark")
+    # save(audio_tokenizer, "tokenizers/suno/bark")
 
-    print_time()
-    print("+++++++++++ creating text-to-speech pipeline ++++++++++++++")
-    synth = pipeline("text-to-speech", model=model, tokenizer=tokenizer)
+    # 3) get translated text
+    speech = []
+    while True:
+        try:
+            current_english_string = input("--> ")
+            if current_english_string == 'exit':
+                print("Received exit command. Exiting program.")
+                break
+            elif current_english_string == 'repeat':
+                if len(speech) == 0:
+                    print("No Audio processed to repeat. Please enter a text to translate.")
+                else:
+                    play_audio_output(speech)
+            else:
+                # print(f"input: {current_english_string}")
+                resp = translation_cache.get_value(current_english_string)
+                if resp:
+                    speech = resp['audio']
+                else:
+                    # print(f"New input received: {current_english_string}. Translating now.")
+                    response_strings = get_translation_texts(translator.transform(current_english_string))
+                    for response in response_strings:
+                        inputs = audio_processor(response, voice_preset=voice_preset)
+                        audio_array = audio_model.generate(**inputs)
+                        audio_array = audio_array.cpu().numpy().squeeze()
+                        # print(f"audio_array: {audio_array}")
+                        translation_cache.update_cache(current_english_string, audio_array)
+                        speech = audio_array
+                        # print(f"speech_list: {speech}")
 
-    #3)get translated text
-    text = ["My name is Jeff.", "I like pizza and tacos.", "I work as a software engineer."]
-    print_time()
-    print(f"******* processing texts: {text}")
-    speech_list = []
-    for line in text:
-        resp = translation_cache.get_value(line)
-        if resp:
-            speech_list.append(resp['audio'])
-        else:
-            print(f"no cached value found. Generating wav.")
-            response_strings = get_translation_texts(translator.transform(line))
-            for response in response_strings:
-                inputs = processor(response, voice_preset=voice_preset)
-                audio_array = model.generate(**inputs)
-                audio_array = audio_array.cpu().numpy().squeeze()
-                print(f"audio_array: {audio_array}")
-                translation_cache.update_cache(line, audio_array)
-                speech_list.append(audio_array)
-                print(f"speech_list: {speech_list}")
+                play_audio_output(speech)
 
-
-    # # # 5) play audio output
-    print_time()
-    print("+++++++++++++++ playing audio +++++++++++++++++++++")
-    paudio = pyaudio.PyAudio()
-    stream = paudio.open(format=paudio.get_format_from_width(4),
-                         channels=1,
-                         rate=24000,
-                         output=True)
-
-    for i, line in enumerate(speech_list):
-        stream.write(line, len(line))
-    stream.stop_stream()
-    stream.close()
-    paudio.terminate()
+        except KeyboardInterrupt:
+            print("Received keyboard interrupt. Exiting program.")
+            break
 
     print(f"Saving cache.")
     translation_cache.save_cache('.')
