@@ -8,7 +8,7 @@ import pyaudio
 import os
 import json
 from transformers import pipeline
-from transformers import AutoProcessor, AutoModel, AutoTokenizer
+from transformers import AutoProcessor, AutoModel, AutoTokenizer, MarianMTModel
 import struct
 from datetime import datetime
 
@@ -50,9 +50,7 @@ class TranslationsCache:
         return None
 
     def update_cache(self, base_lang_string, audio_data):
-        wav_data = audio_data['audio'][0]
-        audio_data['audio'] = wav_data
-        self.cache[base_lang_string] = audio_data
+        self.cache[base_lang_string] = {'audio': audio_data}
 
 
 def json_numpy_obj_hook(dct):
@@ -83,10 +81,13 @@ def save(to_save, dest_dir):
     else:
         print("not saving at %s" % dest_dir)
 
-def get_processor(model_name, src_dir, obj, kwargs={}):
+
+def get_processor(model_name, src_dir, obj, **kwargs):
     if os.path.exists(src_dir):
-        print(f"getting saved version from: {src_dir}" )
-        return obj.from_pretrained(os.path.join(src_dir),)
+        print(f"getting saved version from: {src_dir}")
+        return obj.from_pretrained(os.path.join(src_dir), **kwargs)
+    return obj.from_pretrained(model_name, **kwargs)
+
 
 def get_model(model_name, src_dir, obj):
     if os.path.exists(src_dir):
@@ -116,7 +117,7 @@ if __name__ == '__main__':
     # english to spanish text pipeline
     print_time()
     print("+++++++++ building e to s model/tokenizer +++++++++++++")
-    e_to_s_model = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "models/Helsinki-NLP/opus-mt-tc-big-en-es", AutoModel)
+    e_to_s_model = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "models/Helsinki-NLP/opus-mt-tc-big-en-es", MarianMTModel)
     e_to_s_tokenizer = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es", AutoTokenizer)
 
     print_time()
@@ -132,7 +133,8 @@ if __name__ == '__main__':
     # text to speech pipeline
     print_time()
     print("++++++++++++ building text to speech model/tokenizer ++++++++++")
-    # processor = get_model("suno/bark", "processors/suno/bark", AutoProcessor)
+    voice_preset = "v2/es_speaker_1"
+    processor = get_model("suno/bark", "processors/suno/bark", AutoProcessor)
     model = get_model("suno/bark", "models/suno/bark", AutoModel)
     tokenizer = get_model("suno/bark", "tokenizers/suno/bark", AutoTokenizer)
 
@@ -147,21 +149,25 @@ if __name__ == '__main__':
     synth = pipeline("text-to-speech", model=model, tokenizer=tokenizer)
 
     #3)get translated text
-    text = ["My name is Jeff.", "I like pizza and tacos."]
+    text = ["My name is Jeff.", "I like pizza and tacos.", "I work as a software engineer."]
     print_time()
     print(f"******* processing texts: {text}")
     speech_list = []
     for line in text:
         resp = translation_cache.get_value(line)
         if resp:
-            speech_list.append(resp)
+            speech_list.append(resp['audio'])
         else:
             print(f"no cached value found. Generating wav.")
             response_strings = get_translation_texts(translator.transform(line))
             for response in response_strings:
-                translated_wav = generate_translated_wav(response, synth)
-                translation_cache.update_cache(line, translated_wav)
-                speech_list.append(translated_wav)
+                inputs = processor(response, voice_preset=voice_preset)
+                audio_array = model.generate(**inputs)
+                audio_array = audio_array.cpu().numpy().squeeze()
+                print(f"audio_array: {audio_array}")
+                translation_cache.update_cache(line, audio_array)
+                speech_list.append(audio_array)
+                print(f"speech_list: {speech_list}")
 
 
     # # # 5) play audio output
@@ -174,7 +180,7 @@ if __name__ == '__main__':
                          output=True)
 
     for i, line in enumerate(speech_list):
-        stream.write(line['audio'], len(line['audio']))
+        stream.write(line, len(line))
     stream.stop_stream()
     stream.close()
     paudio.terminate()
