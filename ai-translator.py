@@ -49,8 +49,11 @@ class TranslationsCache:
             return self.cache[key]
         return None
 
-    def update_cache(self, base_lang_string, audio_data):
-        self.cache[base_lang_string] = {'audio': audio_data}
+    def update_cache(self, base_lang_string, translated_string, audio_data):
+        self.cache[base_lang_string] = {
+            'audio': audio_data,
+            'translated-string': translated_string
+        }
 
 
 def json_numpy_obj_hook(dct):
@@ -165,6 +168,7 @@ if __name__ == '__main__':
                 # print(f"input: {current_english_string}")
                 resp = translation_cache.get_value(current_english_string)
                 if resp:
+                    print(f"Translation: {resp['translated-string']}")
                     speech = resp['audio']
                 else:
                     # print(f"New input received: {current_english_string}. Translating now.")
@@ -174,8 +178,9 @@ if __name__ == '__main__':
                         audio_array = audio_model.generate(**inputs)
                         audio_array = audio_array.cpu().numpy().squeeze()
                         # print(f"audio_array: {audio_array}")
-                        translation_cache.update_cache(current_english_string, audio_array)
+                        translation_cache.update_cache(current_english_string, response, audio_array)
                         speech = audio_array
+                        print(f"Translation: {response}")
                         # print(f"speech_list: {speech}")
 
                 play_audio_output(speech)
