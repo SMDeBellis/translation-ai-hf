@@ -56,12 +56,25 @@ class QueueInserter(Thread):
         return None, output_flag
 
 
+class MicrophoneListener(Thread):
+    def __init__(self, shutdown_ev, stop_recording_ev, byte_queue):
+        super(MicrophoneListener, self).__init__()
+        self.shutdown_ev = shutdown_ev
+        self.stop_recording_ev = stop_recording_ev
+        self.byte_queue = byte_queue
 
-def keyboard_run(sd_event, sr_event):
-    def on_press(key):
+    def run(self):
+        try:
+            with keyboard.Listener(on_press=self.on_press, on_release=self.on_release) as listener:
+                listener.join()
+        except Exception as e:
+            print(e)
+            self.shutdown_ev.set()
+
+    def on_press(self, key):
         try:
             if key == keyboard.Key.alt_gr:
-                insertion_thread = QueueInserter(byte_collector_queue, stop_recording_event)
+                insertion_thread = QueueInserter(self.byte_queue, self.stop_recording_ev)
                 insertion_thread.setDaemon(True)
                 insertion_thread.start()
                 print("starting recording")
@@ -69,23 +82,17 @@ def keyboard_run(sd_event, sr_event):
             pass
         except KeyboardInterrupt:
             print("Shutting down")
-            sd_event.set()
+            self.shutdown_ev.set()
 
-    def on_release(key):
+    def on_release(self, key):
         if key == keyboard.Key.alt_gr:
             print("on release called. setting stop_event")
-            sr_event.set()
-            if sd_event.is_set():
+            self.stop_recording_ev.set()
+            if self.shutdown_ev.is_set():
                 return False
             else:
                 return True
 
-    try:
-        with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-            listener.join()
-    except Exception as e:
-        print(e)
-        sd_event.set()
 
 if __name__ == '__main__':
     byte_collector_queue = Queue()
@@ -94,8 +101,10 @@ if __name__ == '__main__':
 
     try:
         # Collect events until released
-        keyboard_thread = Thread(target=keyboard_run, args=[shutdown_event, stop_recording_event], daemon=True)
-        keyboard_thread.start()
+        # keyboard_thread = Thread(target=keyboard_run, args=[shutdown_event, stop_recording_event], daemon=True)
+        # keyboard_thread.start()
+        mic_in_thread = MicrophoneListener(stop_recording_ev=stop_recording_event, shutdown_ev=shutdown_event, byte_queue=byte_collector_queue)
+        mic_in_thread.start()
 
         while not shutdown_event.is_set():
             time.sleep(0.2)

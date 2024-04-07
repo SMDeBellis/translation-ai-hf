@@ -24,88 +24,94 @@ import copy
 # Initial implementation will use a spacebar keypressed to start and continue recording to buffer.
 # When the spacebar is released recording will stop and be sent to the queue.
 
-
-
-
-
-class MicrophoneListener(Thread):
-    def __init__(self, input_queue, shutdown_event):
-        super(MicrophoneListener, self).__init__()
-        self.queue = input_queue
-        self.shutdown_event = shutdown_event
-        self.record_event = Event()
-        self.CHUNK = 1024
-        self.CHANNELS = 1
-        self.RATE = 24000
-        self.DEVICE_INDEX = 0
-        self.buffer = []
+class QueueInserter(Thread):
+    def __init__(self, input_queue, t_shutdown_event):
+        super(QueueInserter, self).__init__()
+        self.input_queue = input_queue
+        self.shutdown_event = t_shutdown_event
+        self.setDaemon(True)
 
     def run(self):
         try:
-            with keyboard.Listener(on_press=self.record_audio_start, on_release=self.record_audio_stop) as listener:
-                listener.join()
-            self.shutdown_event.clear()
+            p = pyaudio.PyAudio()
+            # TODO: move args to class vars
+            stream = p.open(format=p.get_format_from_width(4),
+                            channels=1,
+                            rate=24000,
+                            input=True,
+                            # output=False,
+                            input_device_index=p.get_default_input_device_info()['index'],
+                            frames_per_buffer=1024,
+                            stream_callback=self.microphone_callback)
+
+            while stream.is_active():
+                # print("stream is active")
+                time.sleep(0.2)
+
+            # print("stream no longer active")
+            # print("Closing stream")
+            stream.close()
+
+            # print("terminating p")
+            p.terminate()
+
+            if self.shutdown_event.is_set():
+                print("Unsetting shutdown event")
+                self.shutdown_event.clear()
         except Exception as e:
             print(e)
-            self.shutdown_event.set()
-
-    def record_audio_stop(self, key):
-        print(f"key up press: {key}")
-        if key == keyboard.Key.alt_gr:
-            print("on release called. setting stop_event")
-            self.record_event.set()
-            if self.shutdown_event.is_set():
-                return False
-            else:
-                return True
-
-    def record_audio_start(self, key):
-        if key == keyboard.Key.alt_gr:
-            try:
-                self.buffer = []
-                p = pyaudio.PyAudio()
-                stream = p.open(format=p.get_format_from_width(4),
-                                channels=self.CHANNELS,
-                                rate=self.RATE,
-                                input=True,
-                                input_device_index=p.get_default_input_device_info()['index'],
-                                frames_per_buffer=self.CHUNK,
-                                stream_callback=self.handle_mic_input
-                                )
-
-                while stream.is_active():
-                    print("stream is active")
-                    time.sleep(0.2)
-
-                self.queue.put(copy.deepcopy(self.buffer))
-                self.buffer = []
-                # print("stream no longer active")
-                # print("Closing stream")
-                stream.close()
-
-                # print("terminating p")
-                p.terminate()
-
-                if self.shutdown_event.is_set():
-                    print("Unsetting shutdown event")
-                    self.shutdown_event.clear()
-            except Exception as e:
-                print(e)
 
 
-    def handle_mic_input(self, in_data, frame_count, time_info, status_flags):
-        print(f"self.record_event.is_set(): {self.record_event.is_set()}")
+    def microphone_callback(self, in_data, frame_count, time_info, status_flags):
         # print(f"status_flags: {status_flags}")
         if frame_count > 0:
-            # print(f"loading data: {in_data}")
-            self.buffer.append(in_data)
+            print(f"loading data: {in_data}")
+            self.input_queue.put(in_data)
 
-        if self.record_event.is_set():
+        if self.shutdown_event.is_set():
             output_flag = pyaudio.paComplete
         else:
             output_flag = pyaudio.paContinue
 
         return None, output_flag
+
+
+class MicrophoneListener(Thread):
+    def __init__(self, shutdown_ev, stop_recording_ev, byte_queue):
+        super(MicrophoneListener, self).__init__()
+        self.shutdown_ev = shutdown_ev
+        self.stop_recording_ev = stop_recording_ev
+        self.byte_queue = byte_queue
+
+    def run(self):
+        try:
+            with keyboard.Listener(on_press=self.on_press, on_release=self.on_release) as listener:
+                listener.join()
+        except Exception as e:
+            print(e)
+            self.shutdown_ev.set()
+
+    def on_press(self, key):
+        try:
+            if key == keyboard.Key.alt_gr:
+                insertion_thread = QueueInserter(self.byte_queue, self.stop_recording_ev)
+                insertion_thread.setDaemon(True)
+                insertion_thread.start()
+                print("starting recording")
+        except AttributeError:
+            pass
+        except KeyboardInterrupt:
+            print("Shutting down")
+            self.shutdown_ev.set()
+
+    def on_release(self, key):
+        if key == keyboard.Key.alt_gr:
+            print("on release called. setting stop_event")
+            self.stop_recording_ev.set()
+            if self.shutdown_ev.is_set():
+                return False
+            else:
+                return True
 
 
 
@@ -250,7 +256,8 @@ if __name__ == '__main__':
     # Start mic listener
     input_q = queue.Queue()
     close_event = Event()
-    mic_thread = MicrophoneListener(input_q, close_event)
+    stop_recording_event = Event()
+    mic_thread = MicrophoneListener(close_event, stop_recording_event, input_q)
     mic_thread.setDaemon(True)
     mic_thread.start()
 
