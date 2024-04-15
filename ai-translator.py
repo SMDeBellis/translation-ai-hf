@@ -1,5 +1,7 @@
 #!/usr/bin/env python
+import io
 import queue
+import wave
 from json import JSONEncoder
 
 import dotenv
@@ -8,7 +10,10 @@ import pyaudio
 import os
 import json
 import time
-from transformers import pipeline
+
+import scipy
+import torch
+from transformers import pipeline, Speech2TextForConditionalGeneration, Speech2TextProcessor, AutoModelForSpeechSeq2Seq
 from transformers import AutoProcessor, AutoModel, AutoTokenizer, MarianMTModel
 import struct
 from datetime import datetime
@@ -17,7 +22,9 @@ from queue import Queue, Empty, Full
 from pynput import keyboard
 import copy
 
+from datasets import load_dataset
 
+WAVE_OUTPUT_FILENAME = "/tmp/recorded_audio.wav"
 # initialize by retrieving needed models locally if they don't exist to speed up translation?
 
 
@@ -30,6 +37,7 @@ class QueueInserter(Thread):
         self.input_queue = input_queue
         self.shutdown_event = t_shutdown_event
         self.setDaemon(True)
+        self.audio_buffer = []
 
     def run(self):
         try:
@@ -37,7 +45,7 @@ class QueueInserter(Thread):
             # TODO: move args to class vars
             stream = p.open(format=p.get_format_from_width(4),
                             channels=1,
-                            rate=24000,
+                            rate=16000,
                             input=True,
                             # output=False,
                             input_device_index=p.get_default_input_device_info()['index'],
@@ -54,7 +62,9 @@ class QueueInserter(Thread):
 
             # print("terminating p")
             p.terminate()
-
+            single_array = numpy.concatenate(self.audio_buffer)
+            self.input_queue.put(single_array)
+            self.audio_buffer = []
             if self.shutdown_event.is_set():
                 print("Unsetting shutdown event")
                 self.shutdown_event.clear()
@@ -65,8 +75,10 @@ class QueueInserter(Thread):
     def microphone_callback(self, in_data, frame_count, time_info, status_flags):
         # print(f"status_flags: {status_flags}")
         if frame_count > 0:
-            print(f"loading data: {in_data}")
-            self.input_queue.put(in_data)
+            data = numpy.frombuffer(in_data)
+            print(f"data: {type(data[0])}")
+            # print(f"loading data: {type(in_data)}")
+            self.audio_buffer.append(data)
 
         if self.shutdown_event.is_set():
             output_flag = pyaudio.paComplete
@@ -178,11 +190,9 @@ def play_audio_output(audio):
     paudio = pyaudio.PyAudio()
     stream = paudio.open(format=paudio.get_format_from_width(4),
                          channels=1,
-                         rate=24000,
+                         rate=16000,
                          output=True)
-    stream.write(audio, len(audio))
-    # for i, line in enumerate(audio):
-    #     stream.write(line, len(line))
+    stream.write(audio, len(audio) * 2)
     stream.stop_stream()
     stream.close()
     paudio.terminate()
@@ -224,34 +234,60 @@ if __name__ == '__main__':
     # using pre-recorded file for now.
 
     # 2) generate text from voice input
-    # asr = pipeline("automatic-speech-recognition")
+    # TODO: save this model and load locally
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+
+    model_id = "openai/whisper-large-v3"
+
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+    )
+    model.to(device)
+
+    processor = AutoProcessor.from_pretrained(model_id)
+
+    pipe = pipeline(
+        "automatic-speech-recognition",
+        model=model,
+        tokenizer=processor.tokenizer,
+        feature_extractor=processor.feature_extractor,
+        max_new_tokens=128,
+        chunk_length_s=30,
+        batch_size=16,
+        return_timestamps=True,
+        torch_dtype=torch_dtype,
+        device=device,
+    )
+
+
     # using static text strings for now.
 
     # english to spanish text pipeline
-    # print("+++++++++ building e to s model/tokenizer +++++++++++++")
-    # e_to_s_model = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "models/Helsinki-NLP/opus-mt-tc-big-en-es",
-    #                          MarianMTModel)
-    # e_to_s_tokenizer = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es",
-    #                              AutoTokenizer)
-    #
+    print("+++++++++ building e to s model/tokenizer +++++++++++++")
+    e_to_s_model = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "models/Helsinki-NLP/opus-mt-tc-big-en-es",
+                             MarianMTModel)
+    e_to_s_tokenizer = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es",
+                                 AutoTokenizer)
+
     # print("+++++++++ saving e to s model/tokenizer ++++++++++++++")
-    # save(e_to_s_model, "models/Helsinki-NLP/opus-mt-tc-big-en-es")
-    # save(e_to_s_tokenizer, "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es")
+    save(e_to_s_model, "models/Helsinki-NLP/opus-mt-tc-big-en-es")
+    save(e_to_s_tokenizer, "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es")
     #
     # print("+++++++++ creating e to s translation pipeline +++++++++")
-    # translator = pipeline("translation", model=e_to_s_model, tokenizer=e_to_s_tokenizer)
-    #
+    translator = pipeline("translation", model=e_to_s_model, tokenizer=e_to_s_tokenizer)
+
     # # text to speech pipeline
-    # print("++++++++++++ building text to speech model/tokenizer ++++++++++")
-    # voice_preset = "v2/es_speaker_1"
-    # audio_processor = get_model("suno/bark", "processors/suno/bark", AutoProcessor)
-    # audio_model = get_model("suno/bark", "models/suno/bark", AutoModel)
-    # # audio_tokenizer = get_model("suno/bark", "tokenizers/suno/bark", AutoTokenizer)
-    #
-    # print("+++++++++++++ saving text to speech model/processor +++++++++++")
-    # save(audio_processor, "processors/suno/bark")
-    # save(audio_model, "models/suno/bark")
-    # # save(audio_tokenizer, "tokenizers/suno/bark")
+    print("++++++++++++ building text to speech model/tokenizer ++++++++++")
+    voice_preset = "v2/es_speaker_1"
+    audio_processor = get_model("suno/bark", "processors/suno/bark", AutoProcessor)
+    audio_model = get_model("suno/bark", "models/suno/bark", AutoModel)
+    # audio_tokenizer = get_model("suno/bark", "tokenizers/suno/bark", AutoTokenizer)
+
+    print("+++++++++++++ saving text to speech model/processor +++++++++++")
+    save(audio_processor, "processors/suno/bark")
+    save(audio_model, "models/suno/bark")
+    # save(audio_tokenizer, "tokenizers/suno/bark")
 
     # Start mic listener
     input_q = queue.Queue()
@@ -262,39 +298,53 @@ if __name__ == '__main__':
     mic_thread.start()
 
     # 3) get translated text
+
     print("************* Ready for recording *****************")
-    while speech := input_q.get():
+    while True:
         try:
-            print(f"++++++ speech: {speech}")
+            speech = input_q.get()
+            print(f"++++++ speech: {type(speech)}")
+            with wave.open(WAVE_OUTPUT_FILENAME, 'wb') as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(pyaudio.get_sample_size(pyaudio.paFloat32))
+                wf.setframerate(16000)
+                wf.writeframes(speech)
+            play_audio_output(speech)
+
+            result = pipe(WAVE_OUTPUT_FILENAME)
+            print(result["text"])
+            current_english_string = result["text"]
+
+
             # current_english_string = input("--> ")
-            # if current_english_string == 'exit':
-            #     print("Received exit command. Exiting program.")
-            #     break
-            # elif current_english_string == 'repeat':
-            #     if len(speech) == 0:
-            #         print("No Audio processed to repeat. Please enter a text to translate.")
-            #     else:
-            #         play_audio_output(speech)
-            # else:
-            #     # print(f"input: {current_english_string}")
-            #     resp = translation_cache.get_value(current_english_string)
-            #     if resp:
-            #         print(f"Translation: {resp['translated-string']}")
-            #         speech = resp['audio']
-            #     else:
-            #         # print(f"New input received: {current_english_string}. Translating now.")
-            #         response_strings = get_translation_texts(translator.transform(current_english_string))
-            #         for response in response_strings:
-            #             inputs = audio_processor(response, voice_preset=voice_preset)
-            #             audio_array = audio_model.generate(**inputs)
-            #             audio_array = audio_array.cpu().numpy().squeeze()
-            #             # print(f"audio_array: {audio_array}")
-            #             translation_cache.update_cache(current_english_string, response, audio_array)
-            #             speech = audio_array
-            #             print(f"Translation: {response}")
-            #             # print(f"speech_list: {speech}")
-            #
-            #     play_audio_output(speech)
+            if current_english_string == 'exit':
+                print("Received exit command. Exiting program.")
+                break
+            elif current_english_string == 'repeat':
+                if len(speech) == 0:
+                    print("No Audio processed to repeat. Please enter a text to translate.")
+                else:
+                    play_audio_output(speech)
+            else:
+                # print(f"input: {current_english_string}")
+                resp = translation_cache.get_value(current_english_string)
+                if resp:
+                    print(f"Translation: {resp['translated-string']}")
+                    speech = resp['audio']
+                else:
+                    # print(f"New input received: {current_english_string}. Translating now.")
+                    response_strings = get_translation_texts(translator.transform(current_english_string))
+                    for response in response_strings:
+                        inputs = audio_processor(response, voice_preset=voice_preset)
+                        audio_array = audio_model.generate(**inputs)
+                        audio_array = audio_array.cpu().numpy().squeeze()
+                        # print(f"audio_array: {audio_array}")
+                        translation_cache.update_cache(current_english_string, response, audio_array)
+                        speech = audio_array
+                        print(f"Translation: {response}")
+                        # print(f"speech_list: {speech}")
+
+                play_audio_output(speech)
 
         except KeyboardInterrupt:
             print("Received keyboard interrupt. Exiting program.")
