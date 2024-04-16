@@ -45,7 +45,7 @@ class QueueInserter(Thread):
             # TODO: move args to class vars
             stream = p.open(format=p.get_format_from_width(4),
                             channels=1,
-                            rate=16000,
+                            rate=24000,
                             input=True,
                             # output=False,
                             input_device_index=p.get_default_input_device_info()['index'],
@@ -76,7 +76,7 @@ class QueueInserter(Thread):
         # print(f"status_flags: {status_flags}")
         if frame_count > 0:
             data = numpy.frombuffer(in_data)
-            print(f"data: {type(data[0])}")
+            # print(f"data: {type(data[0])}")
             # print(f"loading data: {type(in_data)}")
             self.audio_buffer.append(data)
 
@@ -190,7 +190,7 @@ def play_audio_output(audio):
     paudio = pyaudio.PyAudio()
     stream = paudio.open(format=paudio.get_format_from_width(4),
                          channels=1,
-                         rate=16000,
+                         rate=24000,
                          output=True)
     stream.write(audio, len(audio) * 2)
     stream.stop_stream()
@@ -296,6 +296,7 @@ if __name__ == '__main__':
     mic_thread = MicrophoneListener(close_event, stop_recording_event, input_q)
     mic_thread.setDaemon(True)
     mic_thread.start()
+    last_english_str = ""
 
     # 3) get translated text
 
@@ -303,30 +304,33 @@ if __name__ == '__main__':
     while True:
         try:
             speech = input_q.get()
-            print(f"++++++ speech: {type(speech)}")
+            # print(f"++++++ speech: {type(speech)}")
             with wave.open(WAVE_OUTPUT_FILENAME, 'wb') as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(pyaudio.get_sample_size(pyaudio.paFloat32))
-                wf.setframerate(16000)
+                wf.setframerate(24000)
                 wf.writeframes(speech)
             play_audio_output(speech)
 
             result = pipe(WAVE_OUTPUT_FILENAME)
-            print(result["text"])
-            current_english_string = result["text"]
+            # print(result["text"])
+            current_english_string = result["text"].strip()
+            print(current_english_string)
 
 
             # current_english_string = input("--> ")
-            if current_english_string == 'exit':
+            if str.lower(current_english_string).strip() == 'end program' or str.lower(current_english_string).strip() == 'end program.':
                 print("Received exit command. Exiting program.")
                 break
-            elif current_english_string == 'repeat':
-                if len(speech) == 0:
+            elif str.lower(current_english_string).strip() == 'repeat last' or str.lower(current_english_string).strip() == 'repeat last.':
+                if len(last_english_str) == 0:
                     print("No Audio processed to repeat. Please enter a text to translate.")
                 else:
-                    play_audio_output(speech)
+                    print(f"repeating from cache: {last_english_str}")
+                    play_audio_output(translation_cache.get_value(last_english_str)['audio'])
             else:
                 # print(f"input: {current_english_string}")
+                last_english_str = current_english_string
                 resp = translation_cache.get_value(current_english_string)
                 if resp:
                     print(f"Translation: {resp['translated-string']}")
