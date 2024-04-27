@@ -1,28 +1,23 @@
 #!/usr/bin/env python
-import io
 import queue
 import wave
 from json import JSONEncoder
 
-import dotenv
 import numpy
 import pyaudio
 import os
 import json
 import time
+import pyttsx3
 
-import scipy
 import torch
-from transformers import pipeline, Speech2TextForConditionalGeneration, Speech2TextProcessor, AutoModelForSpeechSeq2Seq
-from transformers import AutoProcessor, AutoModel, AutoTokenizer, MarianMTModel
+from transformers import pipeline, AutoModelForSpeechSeq2Seq
+from transformers import AutoProcessor, AutoTokenizer, MarianMTModel
 import struct
 from datetime import datetime
 from threading import Thread, Event
-from queue import Queue, Empty, Full
 from pynput import keyboard
-import copy
 
-from datasets import load_dataset
 
 WAVE_OUTPUT_FILENAME = "/tmp/recorded_audio.wav"
 # initialize by retrieving needed models locally if they don't exist to speed up translation?
@@ -70,7 +65,6 @@ class QueueInserter(Thread):
                 self.shutdown_event.clear()
         except Exception as e:
             print(e)
-
 
     def microphone_callback(self, in_data, frame_count, time_info, status_flags):
         # print(f"status_flags: {status_flags}")
@@ -126,6 +120,22 @@ class MicrophoneListener(Thread):
                 return True
 
 
+class TextToSpeech:
+    def __init__(self, rate, volume, voice=None):
+        self.engine = pyttsx3.init()
+        if voice:
+            self.engine.setProperty('voice', voice)
+        self.engine.setProperty('rate', rate)
+        self.engine.setProperty('volume', volume)
+
+    def get_voices(self):
+        voices: list = [self.engine.getProperty('voices')]
+        return [f'{x.id}' for x in voices[0]]
+
+    def text_to_speech(self, text):
+        self.engine.say(text)
+        self.engine.runAndWait()
+
 
 class TranslationsCache:
     def __init__(self, cache_dir):
@@ -161,9 +171,8 @@ class TranslationsCache:
             return self.cache[key]
         return None
 
-    def update_cache(self, base_lang_string, translated_string, audio_data):
+    def update_cache(self, base_lang_string, translated_string):
         self.cache[base_lang_string] = {
-            'audio': audio_data,
             'translated-string': translated_string
         }
 
@@ -184,18 +193,6 @@ def json_numpy_obj_hook(dct):
 
 def get_translation_texts(list_of_dicts):
     return [d['translation_text'] for d in list_of_dicts]
-
-
-def play_audio_output(audio):
-    paudio = pyaudio.PyAudio()
-    stream = paudio.open(format=paudio.get_format_from_width(4),
-                         channels=1,
-                         rate=24000,
-                         output=True)
-    stream.write(audio, len(audio) * 2)
-    stream.stop_stream()
-    stream.close()
-    paudio.terminate()
 
 
 def save(to_save, dest_dir):
@@ -228,10 +225,8 @@ def print_time():
 
 
 if __name__ == '__main__':
-
+    t2s = TextToSpeech(120, 0.5, 'com.apple.eloquence.es-ES.Eddy')
     translation_cache = TranslationsCache(".")
-    # 1) get user voice input
-    # using pre-recorded file for now.
 
     # 2) generate text from voice input
     # TODO: save this model and load locally
@@ -277,48 +272,44 @@ if __name__ == '__main__':
     # print("+++++++++ creating e to s translation pipeline +++++++++")
     translator = pipeline("translation", model=e_to_s_model, tokenizer=e_to_s_tokenizer)
 
-    # # text to speech pipeline
-    print("++++++++++++ building text to speech model/tokenizer ++++++++++")
-    voice_preset = "v2/es_speaker_1"
-    audio_processor = get_model("suno/bark", "processors/suno/bark", AutoProcessor)
-    audio_model = get_model("suno/bark", "models/suno/bark", AutoModel)
-    # audio_tokenizer = get_model("suno/bark", "tokenizers/suno/bark", AutoTokenizer)
-
-    print("+++++++++++++ saving text to speech model/processor +++++++++++")
-    save(audio_processor, "processors/suno/bark")
-    save(audio_model, "models/suno/bark")
-    # save(audio_tokenizer, "tokenizers/suno/bark")
-
-    # Start mic listener
-    input_q = queue.Queue()
-    close_event = Event()
-    stop_recording_event = Event()
-    mic_thread = MicrophoneListener(close_event, stop_recording_event, input_q)
-    mic_thread.setDaemon(True)
-    mic_thread.start()
     last_english_str = ""
-
+    use_audio_input = False
     # 3) get translated text
 
-    print("************* Ready for recording *****************")
+    input_q = queue.Queue()
+    close_event = Event()
+
+    input_type = input("Enter input type: 1) audio, 2) keyboard -> ")
+    if input_type.strip() == "1":
+        use_audio_input = True
+        # Start mic listener
+        stop_recording_event = Event()
+        mic_thread = MicrophoneListener(close_event, stop_recording_event, input_q)
+        mic_thread.setDaemon(True)
+        mic_thread.start()
+        print("************* Ready for recording *****************")
+
     while True:
         try:
-            speech = input_q.get()
-            # print(f"++++++ speech: {type(speech)}")
-            with wave.open(WAVE_OUTPUT_FILENAME, 'wb') as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(pyaudio.get_sample_size(pyaudio.paFloat32))
-                wf.setframerate(24000)
-                wf.writeframes(speech)
-            play_audio_output(speech)
+            if use_audio_input:
+                # 1) get user voice input. blocks until entry in queue.
+                print("Hold option-right to record audio.")
+                speech = input_q.get()
+                # write to file as I haven't found a better way to do it from direct wav input.
+                with wave.open(WAVE_OUTPUT_FILENAME, 'wb') as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(pyaudio.get_sample_size(pyaudio.paFloat32))
+                    wf.setframerate(24000)
+                    wf.writeframes(speech)
 
-            result = pipe(WAVE_OUTPUT_FILENAME)
-            # print(result["text"])
-            current_english_string = result["text"].strip()
+                # Translate wave file to string.
+                result = pipe(WAVE_OUTPUT_FILENAME)
+                current_english_string = result["text"].strip()
+            else:
+                current_english_string = input("-> ")
+
             print(current_english_string)
 
-
-            # current_english_string = input("--> ")
             if str.lower(current_english_string).strip() == 'end program' or str.lower(current_english_string).strip() == 'end program.':
                 print("Received exit command. Exiting program.")
                 break
@@ -327,28 +318,21 @@ if __name__ == '__main__':
                     print("No Audio processed to repeat. Please enter a text to translate.")
                 else:
                     print(f"repeating from cache: {last_english_str}")
-                    play_audio_output(translation_cache.get_value(last_english_str)['audio'])
+                    t2s.text_to_speech(current_english_string)
             else:
                 # print(f"input: {current_english_string}")
                 last_english_str = current_english_string
                 resp = translation_cache.get_value(current_english_string)
                 if resp:
-                    print(f"Translation: {resp['translated-string']}")
-                    speech = resp['audio']
+                    print(f"Translation from cache: {resp['translated-string']}")
+                    t2s.text_to_speech(resp['translated-string'])
                 else:
                     # print(f"New input received: {current_english_string}. Translating now.")
                     response_strings = get_translation_texts(translator.transform(current_english_string))
                     for response in response_strings:
-                        inputs = audio_processor(response, voice_preset=voice_preset)
-                        audio_array = audio_model.generate(**inputs)
-                        audio_array = audio_array.cpu().numpy().squeeze()
-                        # print(f"audio_array: {audio_array}")
-                        translation_cache.update_cache(current_english_string, response, audio_array)
-                        speech = audio_array
                         print(f"Translation: {response}")
-                        # print(f"speech_list: {speech}")
-
-                play_audio_output(speech)
+                        t2s.text_to_speech(response)
+                        translation_cache.update_cache(last_english_str, response)
 
         except KeyboardInterrupt:
             print("Received keyboard interrupt. Exiting program.")
