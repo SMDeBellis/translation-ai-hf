@@ -45,3 +45,4 @@ wcwidth==0.2.13
 pynput==1.7.6
 datasets==2.18.0
 pyttsx3==3.5
+langid==1.1.6

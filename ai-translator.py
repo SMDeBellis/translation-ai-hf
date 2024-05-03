@@ -1,23 +1,22 @@
 #!/usr/bin/env python
+import json
+import os
 import queue
+import struct
+import time
 import wave
+from datetime import datetime
 from json import JSONEncoder
+from threading import Thread, Event
+import langid
 
 import numpy
 import pyaudio
-import os
-import json
-import time
 import pyttsx3
-
 import torch
-from transformers import pipeline, AutoModelForSpeechSeq2Seq
-from transformers import AutoProcessor, AutoTokenizer, MarianMTModel
-import struct
-from datetime import datetime
-from threading import Thread, Event
 from pynput import keyboard
-
+from transformers import AutoProcessor, AutoTokenizer, MarianMTModel
+from transformers import pipeline, AutoModelForSpeechSeq2Seq
 
 WAVE_OUTPUT_FILENAME = "/tmp/recorded_audio.wav"
 # initialize by retrieving needed models locally if they don't exist to speed up translation?
@@ -224,8 +223,22 @@ def print_time():
     print(datetime.now().strftime("%H:%M:%S:%f"))
 
 
+def text_to_speech(line, text_to_speech_map):
+    language_id, _ = langid.classify(line)
+    try:
+        text_to_speech_map[language_id].text_to_speech(line)
+    except KeyError:
+        print(f"No TextToSpeech for language: {language_id}, cannot output line: {line}.")
+
+
 if __name__ == '__main__':
-    t2s = TextToSpeech(120, 0.5, 'com.apple.eloquence.es-ES.Eddy')
+    t2s_es = TextToSpeech(120, 0.5, 'com.apple.eloquence.es-ES.Eddy')
+    t2s_en = TextToSpeech(120, 0.5, 'com.apple.eloquence.en-US.Eddy')
+    t2s_map = {
+        'en': t2s_en,
+        'es': t2s_es
+    }
+
     translation_cache = TranslationsCache(".")
 
     # 2) generate text from voice input
@@ -242,6 +255,7 @@ if __name__ == '__main__':
 
     processor = AutoProcessor.from_pretrained(model_id)
 
+    # changes speech to text.
     pipe = pipeline(
         "automatic-speech-recognition",
         model=model,
@@ -255,9 +269,6 @@ if __name__ == '__main__':
         device=device,
     )
 
-
-    # using static text strings for now.
-
     # english to spanish text pipeline
     print("+++++++++ building e to s model/tokenizer +++++++++++++")
     e_to_s_model = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "models/Helsinki-NLP/opus-mt-tc-big-en-es",
@@ -265,14 +276,24 @@ if __name__ == '__main__':
     e_to_s_tokenizer = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es",
                                  AutoTokenizer)
 
+    # spanish to english text pipeline
+    print("+++++++++ building e to s model/tokenizer +++++++++++++")
+    s_to_e_model = get_model("Helsinki-NLP/opus-mt-es-en", "models/Helsinki-NLP/opus-mt-es-en", MarianMTModel)
+    s_to_e_tokenizer = get_model("Helsinki-NLP/opus-mt-es-en", "tokenizers/Helsinki-NLP/opus-mt-es-en", AutoTokenizer)
+
     # print("+++++++++ saving e to s model/tokenizer ++++++++++++++")
     save(e_to_s_model, "models/Helsinki-NLP/opus-mt-tc-big-en-es")
     save(e_to_s_tokenizer, "tokenizers/Helsinki-NLP/opus-mt-tc-big-en-es")
-    #
+    save(s_to_e_model, "models/Helsinki-NLP/opus-mt-es-en")
+    save(s_to_e_tokenizer, "tokenizers/Helsinki-NLP/opus-mt-es-en")
+
+
     # print("+++++++++ creating e to s translation pipeline +++++++++")
-    translator = pipeline("translation", model=e_to_s_model, tokenizer=e_to_s_tokenizer)
+    e_to_s_translator = pipeline("translation", model=e_to_s_model, tokenizer=e_to_s_tokenizer)
+    s_to_e_translator = pipeline("translation", model=s_to_e_model, tokenizer=s_to_e_tokenizer)
 
     last_english_str = ""
+    last_translated_str = ""
     use_audio_input = False
     # 3) get translated text
 
@@ -314,25 +335,35 @@ if __name__ == '__main__':
                 print("Received exit command. Exiting program.")
                 break
             elif str.lower(current_english_string).strip() == 'repeat last' or str.lower(current_english_string).strip() == 'repeat last.':
-                if len(last_english_str) == 0:
+                if len(last_translated_str) == 0:
                     print("No Audio processed to repeat. Please enter a text to translate.")
                 else:
-                    print(f"repeating from cache: {last_english_str}")
-                    t2s.text_to_speech(current_english_string)
+                    print(f"repeating from cache: {last_translated_str}")
+                    text_to_speech(last_translated_str, t2s_map)
             else:
                 # print(f"input: {current_english_string}")
                 last_english_str = current_english_string
                 resp = translation_cache.get_value(current_english_string)
                 if resp:
                     print(f"Translation from cache: {resp['translated-string']}")
-                    t2s.text_to_speech(resp['translated-string'])
+                    last_translated_str = resp['translated-string']
+                    text_to_speech(last_translated_str, t2s_map)
                 else:
                     # print(f"New input received: {current_english_string}. Translating now.")
-                    response_strings = get_translation_texts(translator.transform(current_english_string))
+                    lang_id, _ = langid.classify(current_english_string)
+                    print(f'Current string to translate base language: {lang_id}')
+                    if lang_id == 'en':
+                        response_strings = get_translation_texts(e_to_s_translator.transform(current_english_string))
+                    elif lang_id == 'es':
+                        response_strings = get_translation_texts(s_to_e_translator.transform(current_english_string))
+                    else:
+                        response_strings = []
+
                     for response in response_strings:
                         print(f"Translation: {response}")
-                        t2s.text_to_speech(response)
+                        text_to_speech(response, t2s_map)
                         translation_cache.update_cache(last_english_str, response)
+                        last_translated_str = response
 
         except KeyboardInterrupt:
             print("Received keyboard interrupt. Exiting program.")
