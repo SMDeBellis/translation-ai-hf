@@ -4,3 +4,4 @@ tokenizers/
 processors/
 *.iml
 language-cache.json*
+*/__pycache__/
