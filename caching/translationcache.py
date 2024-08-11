@@ -39,9 +39,10 @@ class TranslationsCache:
             return self.cache[key]
         return None
 
-    def update_cache(self, base_lang_string, translated_string):
+    def update_cache(self, base_lang_string, translated_string, language_id):
         self.cache[base_lang_string] = {
-            'translated-string': translated_string
+            'translated-string': translated_string,
+            'translation-lang': language_id
         }
 
 

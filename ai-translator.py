@@ -4,14 +4,14 @@ import queue
 import wave
 from datetime import datetime
 from threading import Event
-import langid
 
 import pyaudio
 import torch
 from transformers import AutoProcessor, AutoTokenizer, MarianMTModel
 from transformers import pipeline, AutoModelForSpeechSeq2Seq
-from consumers import MicrophoneListener
+
 from caching.translationcache import TranslationsCache
+from consumers import MicrophoneListener
 from t2s import TextToSpeech
 
 WAVE_OUTPUT_FILENAME = "/tmp/recorded_audio.wav"
@@ -46,8 +46,7 @@ def print_time():
     print(datetime.now().strftime("%H:%M:%S:%f"))
 
 
-def text_to_speech(line, text_to_speech_map):
-    language_id, _ = langid.classify(line)
+def text_to_speech(line, text_to_speech_map, language_id):
     try:
         text_to_speech_map[language_id].text_to_speech(line)
     except KeyError:
@@ -92,6 +91,8 @@ if __name__ == '__main__':
         device=device,
     )
 
+    lang_id_model = pipeline("text-classification", model="papluca/xlm-roberta-base-language-detection")
+
     # english to spanish text pipeline
     print("+++++++++ building e to s model/tokenizer +++++++++++++")
     e_to_s_model = get_model("Helsinki-NLP/opus-mt-tc-big-en-es", "models/Helsinki-NLP/opus-mt-tc-big-en-es",
@@ -117,8 +118,10 @@ if __name__ == '__main__':
 
     last_english_str = ""
     last_translated_str = ""
+    last_translated_lang_id = ""
     use_audio_input = False
-    # 3) get translated text
+    translation_error_en = "Unable to determine base language of the given statement."
+    translation_error_es = get_translation_texts(e_to_s_translator.transform(translation_error_en))[0]
 
     input_q = queue.Queue()
     close_event = Event()
@@ -162,7 +165,7 @@ if __name__ == '__main__':
                     print("No Audio processed to repeat. Please enter a text to translate.")
                 else:
                     print(f"repeating from cache: {last_translated_str}")
-                    text_to_speech(last_translated_str, t2s_map)
+                    text_to_speech(last_translated_str, t2s_map, last_translated_lang_id)
             else:
                 # print(f"input: {current_english_string}")
                 last_english_str = current_english_string
@@ -170,23 +173,31 @@ if __name__ == '__main__':
                 if resp:
                     print(f"Translation from cache: {resp['translated-string']}")
                     last_translated_str = resp['translated-string']
-                    text_to_speech(last_translated_str, t2s_map)
+                    text_to_speech(last_translated_str, t2s_map, resp['translation-lang'])
                 else:
                     # print(f"New input received: {current_english_string}. Translating now.")
-                    lang_id, _ = langid.classify(current_english_string)
+                    # lang_id, _ = langid.classify(current_english_string)
+                    lang_id = lang_id_model.transform(current_english_string)[0]['label']
                     print(f'Current string to translate base language: {lang_id}')
                     if lang_id == 'en':
+                        last_translated_lang_id = 'es'
                         response_strings = get_translation_texts(e_to_s_translator.transform(current_english_string))
                     elif lang_id == 'es':
+                        last_translated_lang_id = 'en'
                         response_strings = get_translation_texts(s_to_e_translator.transform(current_english_string))
                     else:
+                        last_translated_lang_id = ''
                         response_strings = []
 
-                    for response in response_strings:
-                        print(f"Translation: {response}")
-                        text_to_speech(response, t2s_map)
-                        translation_cache.update_cache(last_english_str, response)
-                        last_translated_str = response
+                    if not last_translated_lang_id:
+                        text_to_speech(translation_error_en, t2s_map, 'en')
+                        text_to_speech(translation_error_es, t2s_map, 'es')
+                    else:
+                        for response in response_strings:
+                            print(f"Translation: {response}")
+                            text_to_speech(response, t2s_map, last_translated_lang_id)
+                            translation_cache.update_cache(last_english_str, response, last_translated_lang_id)
+                            last_translated_str = response
 
         except KeyboardInterrupt:
             print("Received keyboard interrupt. Exiting program.")
