@@ -4,7 +4,7 @@ import queue
 import wave
 from datetime import datetime
 from threading import Event
-import langid
+import langdetect
 
 import pyaudio
 import torch
@@ -13,6 +13,7 @@ from transformers import pipeline, AutoModelForSpeechSeq2Seq
 from consumers import MicrophoneListener
 from caching.translationcache import TranslationsCache
 from t2s import TextToSpeech
+
 
 WAVE_OUTPUT_FILENAME = "/tmp/recorded_audio.wav"
 
@@ -47,7 +48,7 @@ def print_time():
 
 
 def text_to_speech(line, text_to_speech_map):
-    language_id, _ = langid.classify(line)
+    language_id = langdetect.detect(line)
     try:
         text_to_speech_map[language_id].text_to_speech(line)
     except KeyError:
@@ -112,7 +113,7 @@ if __name__ == '__main__':
     save(s_to_e_tokenizer, "tokenizers/Helsinki-NLP/opus-mt-es-en")
 
 
-    # print("+++++++++ creating e to s translation pipeline +++++++++")
+    # print("+++++++++ creating pipelines +++++++++")
     e_to_s_translator = pipeline("translation", model=e_to_s_model, tokenizer=e_to_s_tokenizer)
     s_to_e_translator = pipeline("translation", model=s_to_e_model, tokenizer=s_to_e_tokenizer)
 
@@ -174,7 +175,8 @@ if __name__ == '__main__':
                     text_to_speech(last_translated_str, t2s_map)
                 else:
                     # print(f"New input received: {current_english_string}. Translating now.")
-                    lang_id, _ = langid.classify(current_english_string)
+                    lang_id = langdetect.detect(current_english_string)
+                    # lang_id, _ = langid.classify(current_english_string)
                     print(f'Current string to translate base language: {lang_id}')
                     if lang_id == 'en':
                         response_strings = get_translation_texts(e_to_s_translator.transform(current_english_string))
