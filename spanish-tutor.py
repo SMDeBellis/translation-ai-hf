@@ -11,8 +11,9 @@ import json
 import sys
 import os
 import re
+import glob
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 class SpanishTutorChatbot:
     def __init__(self, ollama_host: str = "localhost:11434", model: str = "llama2"):
@@ -21,6 +22,12 @@ class SpanishTutorChatbot:
         self.base_url = f"http://{ollama_host}/api"
         self.conversation_history = []
         self.grammar_notes_file = "spanish_grammar_notes.md"
+        self.conversations_dir = "conversations"
+        self.current_conversation_file = None
+        self.session_start_time = datetime.now()
+        
+        # Create conversations directory if it doesn't exist
+        os.makedirs(self.conversations_dir, exist_ok=True)
         
         # System prompt to establish the chatbot's role
         self.system_prompt = """You are a helpful Spanish-English tutoring chatbot. Your role is to:
@@ -85,7 +92,9 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
                 bot_response = result.get("response", "").strip()
                 
                 # Store conversation history
-                self.conversation_history.append({"user": message, "bot": bot_response})
+                exchange = {"user": message, "bot": bot_response, "timestamp": datetime.now().isoformat()}
+                self.conversation_history.append(exchange)
+                self.save_conversation()
                 return bot_response
             else:
                 return f"Error: Received status code {response.status_code}"
@@ -136,6 +145,116 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
                     print("📚 Grammar notes file is empty. Start asking about grammar rules!")
         except Exception as e:
             print(f"⚠️ Error reading grammar notes: {str(e)}")
+    
+    def get_conversation_filename(self, timestamp: datetime = None) -> str:
+        """Generate a filename for conversation storage."""
+        if timestamp is None:
+            timestamp = self.session_start_time
+        return f"{self.conversations_dir}/conversation_{timestamp.strftime('%Y%m%d_%H%M%S')}.json"
+    
+    def save_conversation(self) -> None:
+        """Save current conversation to JSON file."""
+        if not self.conversation_history:
+            return
+        
+        if self.current_conversation_file is None:
+            self.current_conversation_file = self.get_conversation_filename()
+        
+        conversation_data = {
+            "session_start": self.session_start_time.isoformat(),
+            "model": self.model,
+            "conversation": self.conversation_history
+        }
+        
+        try:
+            with open(self.current_conversation_file, "w", encoding="utf-8") as f:
+                json.dump(conversation_data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"⚠️ Could not save conversation: {str(e)}")
+    
+    def load_latest_conversation(self) -> bool:
+        """Load the most recent conversation on startup."""
+        try:
+            conversation_files = glob.glob(f"{self.conversations_dir}/conversation_*.json")
+            if not conversation_files:
+                return False
+            
+            # Get the most recent file
+            latest_file = max(conversation_files, key=os.path.getmtime)
+            return self.load_conversation(latest_file)
+        except Exception as e:
+            print(f"⚠️ Could not load latest conversation: {str(e)}")
+            return False
+    
+    def load_conversation(self, filename: str) -> bool:
+        """Load a specific conversation from file."""
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            
+            self.conversation_history = data.get("conversation", [])
+            self.current_conversation_file = filename
+            
+            # Extract session info
+            session_start = data.get("session_start", "")
+            model = data.get("model", "unknown")
+            
+            print(f"📚 Loaded conversation from {session_start} (model: {model})")
+            print(f"💬 {len(self.conversation_history)} exchanges restored")
+            return True
+        except Exception as e:
+            print(f"⚠️ Could not load conversation from {filename}: {str(e)}")
+            return False
+    
+    def list_conversations(self) -> List[Dict]:
+        """List all saved conversations with metadata."""
+        conversations = []
+        try:
+            conversation_files = glob.glob(f"{self.conversations_dir}/conversation_*.json")
+            
+            for file_path in sorted(conversation_files, key=os.path.getmtime, reverse=True):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    
+                    conversations.append({
+                        "file": file_path,
+                        "session_start": data.get("session_start", "unknown"),
+                        "model": data.get("model", "unknown"),
+                        "exchanges": len(data.get("conversation", [])),
+                        "file_size": os.path.getsize(file_path)
+                    })
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"⚠️ Error listing conversations: {str(e)}")
+        
+        return conversations
+    
+    def display_conversations(self) -> None:
+        """Display list of saved conversations."""
+        conversations = self.list_conversations()
+        
+        if not conversations:
+            print("📚 No saved conversations found.")
+            return
+        
+        print("\n💾 Saved Conversations:")
+        print("=" * 60)
+        
+        for i, conv in enumerate(conversations, 1):
+            session_time = conv['session_start'][:19].replace('T', ' ')
+            print(f"{i:2d}. {session_time} | {conv['exchanges']} exchanges | {conv['model']}")
+        
+        print("=" * 60)
+        print("Use 'load <number>' to load a specific conversation")
+    
+    def start_new_conversation(self) -> None:
+        """Start a fresh conversation session."""
+        self.conversation_history = []
+        self.current_conversation_file = None
+        self.session_start_time = datetime.now()
+        print("🆕 Started new conversation session!")
 
     def display_welcome(self):
         """Display welcome message and instructions."""
@@ -152,6 +271,9 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
         print("• Type 'help' or 'ayuda' for assistance")
         print("• Type 'clear' to clear conversation history")
         print("• Type 'notes' to view saved grammar rules")
+        print("• Type 'conversations' to list saved conversations")
+        print("• Type 'load <number>' to load a specific conversation")
+        print("• Type 'new' to start a fresh conversation")
         print("=" * 60)
 
     def handle_special_commands(self, user_input: str) -> bool:
@@ -169,6 +291,9 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
             print("• Practice: '¿Cómo estás?' or 'What does 'gracias' mean?'")
             print("• Request: 'Explain the difference between ser and estar'")
             print("• Type 'notes' to view saved grammar rules")
+            print("• Type 'conversations' to see all saved conversations")
+            print("• Type 'load <number>' to continue a previous conversation")
+            print("• Type 'new' to start fresh (current conversation is auto-saved)")
             return False
         
         elif user_input_lower == 'clear':
@@ -178,6 +303,30 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
         
         elif user_input_lower in ['notes', 'notas', 'grammar']:
             self.view_grammar_notes()
+            return False
+        
+        elif user_input_lower in ['conversations', 'conversaciones', 'list']:
+            self.display_conversations()
+            return False
+        
+        elif user_input_lower.startswith('load '):
+            try:
+                conv_number = int(user_input_lower.split()[1])
+                conversations = self.list_conversations()
+                if 1 <= conv_number <= len(conversations):
+                    selected_conv = conversations[conv_number - 1]
+                    if self.load_conversation(selected_conv['file']):
+                        pass  # Success message already printed in load_conversation
+                    else:
+                        print("❌ Failed to load conversation")
+                else:
+                    print(f"❌ Invalid conversation number. Use 1-{len(conversations)}")
+            except (ValueError, IndexError):
+                print("❌ Usage: load <number> (e.g., 'load 1')")
+            return False
+        
+        elif user_input_lower in ['new', 'nuevo', 'fresh']:
+            self.start_new_conversation()
             return False
         
         return False
@@ -190,6 +339,13 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
             print("Please make sure Ollama is running with: ollama serve")
             sys.exit(1)
 
+        # Try to load the latest conversation
+        if self.load_latest_conversation():
+            print("\n🔄 Would you like to continue your previous conversation? (y/n): ", end="")
+            choice = input().strip().lower()
+            if choice not in ['y', 'yes', 'sí', 'si']:
+                self.start_new_conversation()
+        
         self.display_welcome()
         
         print(f"\n🤖 Using model: {self.model}")
@@ -218,7 +374,9 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
                     print("❌ Sorry, I couldn't process your message. Please try again.\n")
 
             except KeyboardInterrupt:
-                print("\n\n👋 ¡Hasta luego! See you later!")
+                print("\n\n💾 Saving conversation...")
+                self.save_conversation()
+                print("👋 ¡Hasta luego! See you later!")
                 break
             except Exception as e:
                 print(f"❌ An error occurred: {str(e)}")
