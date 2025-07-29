@@ -7,3 +7,4 @@ processors/
 language-cache.json*
 */__pycache__/
 *_grammar_notes.md
+conversations/
