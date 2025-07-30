@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Conversations - Spanish Tutor{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <h1>Conversation Management</h1>
+            <p>View, manage, and export your Spanish tutoring conversations</p>
+        </div>
+        <div class="page-actions">
+            <button id="refresh-conversations-btn" class="btn btn-secondary">
+                <span class="btn-icon">🔄</span>
+                Refresh
+            </button>
+            <a href="/" class="btn btn-primary">
+                <span class="btn-icon">💬</span>
+                New Chat
+            </a>
+        </div>
+    </div>
+
+    <!-- Conversations Grid -->
+    <div class="conversations-container">
+        <div id="conversations-loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading conversations...</p>
+        </div>
+
+        <div id="conversations-empty" class="empty-state" style="display: none;">
+            <div class="empty-icon">📚</div>
+            <h3>No Conversations Yet</h3>
+            <p>Start chatting with the Spanish tutor to create your first conversation.</p>
+            <a href="/" class="btn btn-primary">
+                <span class="btn-icon">💬</span>
+                Start Chatting
+            </a>
+        </div>
+
+        <div id="conversations-grid" class="conversations-grid" style="display: none;">
+            <!-- Conversations will be populated here -->
+        </div>
+    </div>
+</div>
+
+<!-- Conversation Detail Modal -->
+<div id="conversation-detail-modal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 id="conversation-detail-title">Conversation Details</h3>
+            <button class="modal-close" onclick="closeModal('conversation-detail-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="conversation-detail-content">
+                <!-- Conversation details will be loaded here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="export-conversation-btn" class="btn btn-secondary">
+                <span class="btn-icon">📥</span>
+                Export
+            </button>
+            <button id="load-conversation-btn" class="btn btn-primary">
+                <span class="btn-icon">💬</span>
+                Continue Chat
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-confirmation-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button class="modal-close" onclick="closeModal('delete-confirmation-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this conversation?</p>
+            <p><strong>This action cannot be undone.</strong></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('delete-confirmation-modal')">Cancel</button>
+            <button id="confirm-delete-btn" class="btn btn-danger">Delete</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xl);
+    gap: var(--spacing-lg);
+}
+
+.page-title h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.page-title p {
+    color: var(--text-secondary);
+    font-size: 1.125rem;
+}
+
+.page-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.conversations-container {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    min-height: 400px;
+    padding: var(--spacing-xl);
+}
+
+.loading-state, .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.6;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xl);
+    max-width: 400px;
+}
+
+.conversations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.conversation-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    transition: var(--transition-normal);
+    cursor: pointer;
+    position: relative;
+}
+
+.conversation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
+}
+
+.conversation-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
+.conversation-date {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1.125rem;
+}
+
+.conversation-time {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.conversation-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    opacity: 0;
+    transition: var(--transition-fast);
+}
+
+.conversation-card:hover .conversation-actions {
+    opacity: 1;
+}
+
+.conversation-stats {
+    display: flex;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+}
+
+.conversation-stat {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.conversation-preview {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+    font-size: 0.875rem;
+}
+
+.action-btn:hover {
+    background: var(--gray-200);
+    color: var(--text-primary);
+}
+
+.action-btn.danger:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+.modal-large {
+    max-width: 800px;
+    max-height: 90vh;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--gray-200);
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+.conversation-detail-messages {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+}
+
+.detail-message {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+}
+
+.detail-message.user {
+    background: var(--primary-color);
+    color: white;
+    margin-left: var(--spacing-xl);
+}
+
+.detail-message.bot {
+    background: var(--bg-primary);
+    border: 1px solid var(--gray-200);
+    margin-right: var(--spacing-xl);
+}
+
+.detail-message-content {
+    margin-bottom: var(--spacing-xs);
+    white-space: pre-wrap;
+}
+
+.detail-message-time {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-md);
+    }
+    
+    .page-actions {
+        justify-content: flex-end;
+    }
+    
+    .conversations-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+    
+    .conversation-actions {
+        opacity: 1;
+    }
+    
+    .modal-large {
+        max-width: 95vw;
+        margin: var(--spacing-md);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/conversations.js') }}"></script>
+{% endblock %}

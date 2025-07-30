@@ -1,0 +1,20 @@
+# Web GUI Requirements
+# Core web framework
+Flask==2.3.3
+Flask-SocketIO==5.3.6
+
+# WebSocket support
+python-socketio==5.8.0
+eventlet==0.33.3
+
+# HTTP server
+gunicorn==21.2.0
+
+# JSON handling and utilities
+python-json-logger==2.0.7
+
+# CORS support for development
+Flask-CORS==4.0.0
+
+# Additional utilities
+Werkzeug==2.3.7

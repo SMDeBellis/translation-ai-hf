@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - Spanish Tutor{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <!-- Chat Header -->
+    <div class="chat-header">
+        <div class="chat-title">
+            <h2>Spanish Language Tutor</h2>
+            <p>Practice Spanish conversation and get instant feedback</p>
+        </div>
+        <div class="chat-actions">
+            <button id="new-conversation-btn" class="btn btn-secondary" title="Start New Conversation (Ctrl+N)">
+                <span class="btn-icon">➕</span>
+                New Chat
+            </button>
+            <button id="load-conversation-btn" class="btn btn-secondary" title="Load Conversation">
+                <span class="btn-icon">📁</span>
+                Load
+            </button>
+        </div>
+    </div>
+
+    <!-- Chat Messages -->
+    <div class="chat-messages" id="chat-messages">
+        <div class="welcome-message">
+            <div class="welcome-icon">🎓</div>
+            <h3>¡Hola! Welcome to Spanish Tutor</h3>
+            <p>I'm here to help you learn Spanish through conversation. You can:</p>
+            <ul>
+                <li>Ask me to translate words or phrases</li>
+                <li>Practice conversations in Spanish</li>
+                <li>Request grammar explanations</li>
+                <li>Get corrections and feedback</li>
+            </ul>
+            <p>Type a message below to get started!</p>
+        </div>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <textarea 
+                id="message-input" 
+                class="chat-input" 
+                placeholder="Type your message here... (Ctrl+Enter to send)"
+                rows="1"></textarea>
+            <button id="send-btn" class="send-button" disabled title="Send Message (Ctrl+Enter)">
+                <span class="send-icon">📤</span>
+            </button>
+        </div>
+        <div class="input-help">
+            <span class="help-text">
+                Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to send, <kbd>Ctrl</kbd> + <kbd>L</kbd> to clear
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Connecting to Spanish Tutor...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}
