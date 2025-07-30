@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Spanish Tutor{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <h1>Settings</h1>
+            <p>Configure your Spanish Tutor preferences and connection settings</p>
+        </div>
+        <div class="page-actions">
+            <button id="test-connection-btn" class="btn btn-secondary">
+                <span class="btn-icon">🔗</span>
+                Test Connection
+            </button>
+            <button id="reset-settings-btn" class="btn btn-secondary">
+                <span class="btn-icon">↩️</span>
+                Reset to Defaults
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Form -->
+    <div class="settings-container">
+        <form id="settings-form" class="settings-form">
+            <!-- Ollama Configuration -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h3>🤖 Ollama Configuration</h3>
+                    <p>Configure connection to your Ollama server</p>
+                </div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label for="ollama-host" class="form-label">
+                            Ollama Host
+                            <span class="form-help">Server address and port</span>
+                        </label>
+                        <input type="text" id="ollama-host" name="ollamaHost" 
+                               class="form-input" value="localhost:11434"
+                               placeholder="localhost:11434">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="model-select" class="form-label">
+                            AI Model
+                            <span class="form-help">Language model to use for conversations</span>
+                        </label>
+                        <select id="model-select" name="model" class="form-select">
+                            <option value="llama3">Llama 3 (Recommended)</option>
+                            <option value="mistral">Mistral</option>
+                            <option value="llama2">Llama 2</option>
+                            <option value="codellama">Code Llama</option>
+                            <option value="vicuna">Vicuna</option>
+                            <option value="orca-mini">Orca Mini</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="connection-timeout" class="form-label">
+                            Connection Timeout
+                            <span class="form-help">Timeout in seconds for server requests</span>
+                        </label>
+                        <input type="number" id="connection-timeout" name="connectionTimeout" 
+                               class="form-input" value="30" min="5" max="120">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interface Settings -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h3>🎨 Interface Settings</h3>
+                    <p>Customize the appearance and behavior of the interface</p>
+                </div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label for="theme-select" class="form-label">
+                            Theme
+                            <span class="form-help">Choose your preferred color theme</span>
+                        </label>
+                        <select id="theme-select" name="theme" class="form-select">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark (Coming Soon)</option>
+                            <option value="auto">Auto (System)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="font-size" class="form-label">
+                            Font Size
+                            <span class="form-help">Base font size for chat messages</span>
+                        </label>
+                        <input type="range" id="font-size" name="fontSize" 
+                               class="form-range" min="12" max="20" value="16">
+                        <span id="font-size-value" class="range-value">16px</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="auto-scroll" name="autoScroll" checked>
+                            <label for="auto-scroll" class="checkbox-label">
+                                Auto-scroll to new messages
+                                <span class="form-help">Automatically scroll to new messages in chat</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="show-timestamps" name="showTimestamps" checked>
+                            <label for="show-timestamps" class="checkbox-label">
+                                Show message timestamps
+                                <span class="form-help">Display time for each message</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Learning Settings -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h3>📚 Learning Settings</h3>
+                    <p>Configure learning preferences and conversation behavior</p>
+                </div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="auto-save-conversations" name="autoSaveConversations" checked>
+                            <label for="auto-save-conversations" class="checkbox-label">
+                                Auto-save conversations
+                                <span class="form-help">Automatically save conversations as you chat</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="auto-save-grammar" name="autoSaveGrammar" checked>
+                            <label for="auto-save-grammar" class="checkbox-label">
+                                Auto-save grammar notes
+                                <span class="form-help">Automatically save grammar explanations</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="max-conversation-history" class="form-label">
+                            Max Conversation History
+                            <span class="form-help">Maximum number of exchanges to keep in memory</span>
+                        </label>
+                        <input type="number" id="max-conversation-history" name="maxConversationHistory" 
+                               class="form-input" value="100" min="10" max="1000">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Settings -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h3>⚙️ Advanced Settings</h3>
+                    <p>Advanced configuration options</p>
+                </div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="debug-mode" name="debugMode">
+                            <label for="debug-mode" class="checkbox-label">
+                                Enable debug mode
+                                <span class="form-help">Show detailed logging in browser console</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="experimental-features" name="experimentalFeatures">
+                            <label for="experimental-features" class="checkbox-label">
+                                Enable experimental features
+                                <span class="form-help">Access beta features and new functionality</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
+                <button type="submit" id="save-btn" class="btn btn-primary">
+                    <span class="btn-icon">💾</span>
+                    Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Connection Test Modal -->
+<div id="connection-test-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Connection Test</h3>
+            <button class="modal-close" onclick="closeModal('connection-test-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="connection-test-content">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Testing connection to Ollama...</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('connection-test-modal')">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+}
+
+.settings-container {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.settings-form {
+    padding: var(--spacing-xl);
+}
+
+.settings-section {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.settings-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.section-header {
+    margin-bottom: var(--spacing-lg);
+}
+
+.section-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.section-header p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.section-content {
+    display: grid;
+    gap: var(--spacing-lg);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.form-help {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.form-input, .form-select {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+}
+
+.form-range {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--gray-200);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.range-value {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.form-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+}
+
+.form-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.checkbox-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-xl);
+    border-top: 1px solid var(--gray-200);
+    margin-top: var(--spacing-xl);
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.connection-status.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.connection-status.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.connection-status.testing {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.settings-changed-banner {
+    position: fixed;
+    bottom: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary-color);
+    color: white;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    display: none;
+    align-items: center;
+    gap: var(--spacing-md);
+    z-index: 1000;
+}
+
+.settings-changed-banner.show {
+    display: flex;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateX(-50%) translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-md);
+    }
+    
+    .page-actions {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+    
+    .settings-form {
+        padding: var(--spacing-lg);
+    }
+    
+    .form-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+    
+    .settings-changed-banner {
+        left: var(--spacing-md);
+        right: var(--spacing-md);
+        transform: none;
+    }
+    
+    .settings-changed-banner.show {
+        transform: none;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

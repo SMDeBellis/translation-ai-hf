@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Spanish Tutor - AI Language Learning Assistant{% endblock %}</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    {% block extra_css %}{% endblock %}
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="nav-icon">🎓</span>
+                <span class="nav-title">Spanish Tutor</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                    <span class="nav-link-icon">💬</span>
+                    Chat
+                </a>
+                <a href="/conversations" class="nav-link {% if request.endpoint == 'conversations' %}active{% endif %}">
+                    <span class="nav-link-icon">📚</span>
+                    Conversations
+                </a>
+                <a href="/grammar-notes" class="nav-link {% if request.endpoint == 'grammar_notes' %}active{% endif %}">
+                    <span class="nav-link-icon">📝</span>
+                    Grammar Notes
+                </a>
+                <a href="/settings" class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}">
+                    <span class="nav-link-icon">⚙️</span>
+                    Settings
+                </a>
+            </div>
+            <div class="nav-status">
+                <div id="connection-status" class="status-indicator disconnected">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Spanish Tutor - AI Language Learning Assistant</p>
+            <div class="footer-links">
+                <a href="#" onclick="showKeyboardShortcuts()">Keyboard Shortcuts</a>
+                <a href="#" onclick="showAbout()">About</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div id="keyboard-shortcuts-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="modal-close" onclick="closeModal('keyboard-shortcuts-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcuts-grid">
+                    <div class="shortcut-item">
+                        <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
+                        <span>Send message</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl</kbd> + <kbd>N</kbd>
+                        <span>New conversation</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl</kbd> + <kbd>L</kbd>
+                        <span>Clear input</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Escape</kbd>
+                        <span>Focus input</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl</kbd> + <kbd>/</kbd>
+                        <span>Show shortcuts</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="about-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>About Spanish Tutor</h3>
+                <button class="modal-close" onclick="closeModal('about-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h4>AI Language Learning Assistant</h4>
+                <p>A conversational Spanish/English tutoring application powered by Ollama and built with modern web technologies.</p>
+                
+                <h5>Features:</h5>
+                <ul>
+                    <li>Real-time chat interface with AI tutor</li>
+                    <li>Automatic conversation saving and management</li>
+                    <li>Grammar notes collection and export</li>
+                    <li>Responsive design for all devices</li>
+                    <li>Cross-platform web accessibility</li>
+                </ul>
+                
+                <p><strong>Version:</strong> 2.0 (Web Edition)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+
+    <script>
+        // Global keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl + / - Show keyboard shortcuts
+            if (e.ctrlKey && e.key === '/') {
+                e.preventDefault();
+                showKeyboardShortcuts();
+            }
+        });
+
+        function showKeyboardShortcuts() {
+            document.getElementById('keyboard-shortcuts-modal').style.display = 'flex';
+        }
+
+        function showAbout() {
+            document.getElementById('about-modal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Close modals when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}Grammar Notes - Spanish Tutor{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <h1>Spanish Grammar Notes</h1>
+            <p>Your collected grammar explanations and rules from tutoring sessions</p>
+        </div>
+        <div class="page-actions">
+            <button id="refresh-notes-btn" class="btn btn-secondary">
+                <span class="btn-icon">🔄</span>
+                Refresh
+            </button>
+            <button id="export-notes-btn" class="btn btn-secondary" disabled>
+                <span class="btn-icon">📥</span>
+                Export
+            </button>
+            <button id="clear-notes-btn" class="btn btn-danger" disabled>
+                <span class="btn-icon">🗑️</span>
+                Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Grammar Notes Content -->
+    <div class="notes-container">
+        <div id="notes-loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading grammar notes...</p>
+        </div>
+
+        <div id="notes-empty" class="empty-state" style="display: none;">
+            <div class="empty-icon">📝</div>
+            <h3>No Grammar Notes Yet</h3>
+            <p>Grammar explanations will automatically appear here when you ask the tutor about Spanish grammar rules.</p>
+            <div class="empty-tips">
+                <h4>Try asking about:</h4>
+                <ul>
+                    <li>"Explain the difference between ser and estar"</li>
+                    <li>"When do I use subjunctive mood?"</li>
+                    <li>"How do Spanish verb conjugations work?"</li>
+                    <li>"What are the rules for using por vs para?"</li>
+                </ul>
+            </div>
+            <a href="/" class="btn btn-primary">
+                <span class="btn-icon">💬</span>
+                Start Learning
+            </a>
+        </div>
+
+        <div id="notes-content" class="notes-content" style="display: none;">
+            <div class="notes-toolbar">
+                <div class="notes-info">
+                    <span id="notes-word-count" class="notes-stat">0 words</span>
+                    <span id="notes-char-count" class="notes-stat">0 characters</span>
+                    <span id="notes-last-updated" class="notes-stat">Never updated</span>
+                </div>
+                <div class="notes-search">
+                    <input type="text" id="search-notes" placeholder="Search notes..." class="search-input">
+                    <button id="search-clear" class="search-clear" style="display: none;">&times;</button>
+                </div>
+            </div>
+            
+            <div class="notes-viewer">
+                <div id="notes-text" class="notes-text">
+                    <!-- Grammar notes content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Confirmation Modal -->
+<div id="clear-confirmation-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Clear All Grammar Notes</h3>
+            <button class="modal-close" onclick="closeModal('clear-confirmation-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to clear all grammar notes?</p>
+            <p><strong>This action cannot be undone.</strong></p>
+            <p>Consider exporting your notes first to keep a backup.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('clear-confirmation-modal')">Cancel</button>
+            <button id="export-before-clear-btn" class="btn btn-secondary">Export First</button>
+            <button id="confirm-clear-btn" class="btn btn-danger">Clear All</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xl);
+    gap: var(--spacing-lg);
+}
+
+.page-title h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.page-title p {
+    color: var(--text-secondary);
+    font-size: 1.125rem;
+}
+
+.page-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.notes-container {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    min-height: 500px;
+}
+
+.loading-state, .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 500px;
+    text-align: center;
+    padding: var(--spacing-xl);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.6;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xl);
+    max-width: 500px;
+    line-height: 1.6;
+}
+
+.empty-tips {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    text-align: left;
+    max-width: 400px;
+}
+
+.empty-tips h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.empty-tips ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.empty-tips li {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xs);
+    padding-left: var(--spacing-md);
+    position: relative;
+}
+
+.empty-tips li::before {
+    content: "💡";
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.notes-content {
+    display: flex;
+    flex-direction: column;
+    height: 70vh;
+    min-height: 500px;
+}
+
+.notes-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    gap: var(--spacing-lg);
+}
+
+.notes-info {
+    display: flex;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.notes-stat {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.notes-search {
+    position: relative;
+    min-width: 250px;
+}
+
+.search-input {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+    transition: var(--transition-fast);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+}
+
+.search-clear {
+    position: absolute;
+    right: var(--spacing-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+}
+
+.search-clear:hover {
+    background: var(--gray-200);
+    color: var(--text-primary);
+}
+
+.notes-viewer {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.notes-text {
+    height: 100%;
+    overflow-y: auto;
+    padding: var(--spacing-xl);
+    font-family: var(--font-family);
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* Markdown-style formatting for notes */
+.notes-text h1, .notes-text h2, .notes-text h3, .notes-text h4, .notes-text h5, .notes-text h6 {
+    font-weight: 600;
+    margin-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.notes-text h1 { font-size: 1.875rem; }
+.notes-text h2 { font-size: 1.5rem; }
+.notes-text h3 { font-size: 1.25rem; }
+.notes-text h4 { font-size: 1.125rem; }
+
+.notes-text p {
+    margin-bottom: var(--spacing-md);
+}
+
+.notes-text ul, .notes-text ol {
+    margin-bottom: var(--spacing-md);
+    padding-left: var(--spacing-xl);
+}
+
+.notes-text li {
+    margin-bottom: var(--spacing-xs);
+}
+
+.notes-text blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding-left: var(--spacing-md);
+    margin: var(--spacing-lg) 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.notes-text code {
+    background: var(--bg-secondary);
+    padding: 0.125em 0.25em;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+}
+
+.notes-text pre {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    overflow-x: auto;
+    margin: var(--spacing-md) 0;
+}
+
+.notes-text pre code {
+    background: none;
+    padding: 0;
+}
+
+.notes-text hr {
+    border: none;
+    border-top: 1px solid var(--gray-200);
+    margin: var(--spacing-xl) 0;
+}
+
+/* Search highlighting */
+.search-highlight {
+    background-color: #fef3c7;
+    padding: 0.125em 0.25em;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-md);
+    }
+    
+    .page-actions {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+    
+    .notes-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-md);
+    }
+    
+    .notes-info {
+        justify-content: center;
+    }
+    
+    .notes-search {
+        min-width: auto;
+    }
+    
+    .notes-content {
+        height: 60vh;
+    }
+    
+    .notes-text {
+        padding: var(--spacing-lg);
+    }
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--gray-200);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/grammar_notes.js') }}"></script>
+{% endblock %}
