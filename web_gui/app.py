@@ -14,8 +14,10 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import threading
 import queue
+import logging
+from logging.handlers import RotatingFileHandler
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from flask_socketio import SocketIO, emit, disconnect
 from flask_cors import CORS
 
@@ -33,9 +35,28 @@ spec.loader.exec_module(spanish_tutor_module)
 SpanishTutorChatbot = spanish_tutor_module.SpanishTutorChatbot
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static/dist', static_url_path='/static')
 app.config['SECRET_KEY'] = 'spanish-tutor-secret-key-change-in-production'
 app.config['DEBUG'] = True
+
+# Set up file logging
+if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    file_handler = RotatingFileHandler(
+        os.path.join(log_dir, 'spanish-tutor.log'), 
+        maxBytes=10240000, 
+        backupCount=10
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Spanish Tutor Web GUI startup')
 
 # Enable CORS for development
 CORS(app)
@@ -92,25 +113,37 @@ class WebChatbotManager:
 # Initialize chatbot manager
 chatbot_manager = WebChatbotManager()
 
+# React SPA routes
 @app.route('/')
-def index():
-    """Serve the main chat interface."""
-    return render_template('index.html')
-
 @app.route('/conversations')
-def conversations():
-    """Serve the conversations management page."""
-    return render_template('conversations.html')
-
 @app.route('/grammar-notes')
-def grammar_notes():
-    """Serve the grammar notes viewer page."""
-    return render_template('grammar_notes.html')
-
 @app.route('/settings')
-def settings():
-    """Serve the settings configuration page."""
-    return render_template('settings.html')
+def index():
+    """Serve the React SPA for all frontend routes."""
+    try:
+        # Try to serve the React build first
+        return send_from_directory(os.path.join(app.static_folder, 'public'), 'index.html')
+    except:
+        # Fallback to development message if React build doesn't exist
+        return '''
+        <html>
+        <head><title>Spanish Tutor - React Development</title></head>
+        <body>
+            <h1>Spanish Tutor React Frontend</h1>
+            <p>The React build is not available. Please run:</p>
+            <pre>cd frontend && npm run build</pre>
+            <p>Or for development:</p>
+            <pre>cd frontend && npm run dev</pre>
+            <p>The development server will be available at <a href="http://localhost:3000">http://localhost:3000</a></p>
+        </body>
+        </html>
+        '''
+
+# Static asset routes for React build
+@app.route('/assets/<path:filename>')
+def react_assets(filename):
+    """Serve React build assets."""
+    return send_from_directory(os.path.join(app.static_folder, 'assets'), filename)
 
 # API Routes
 @app.route('/api/health')
@@ -317,7 +350,10 @@ def handle_load_conversation(data):
     session_id = request.sid
     filename = data.get('filename')
     
+    app.logger.info(f"Received load_conversation request for {filename} from session {session_id}")
+    
     if not filename:
+        app.logger.error("No filename provided in load_conversation request")
         emit('error', {'message': 'No filename provided'})
         return
     
@@ -325,7 +361,12 @@ def handle_load_conversation(data):
         chatbot = chatbot_manager.get_chatbot(session_id)
         conversation_path = os.path.join(chatbot.conversations_dir, filename)
         
+        app.logger.info(f"Loading conversation from path: {conversation_path}")
+        app.logger.info(f"File exists: {os.path.exists(conversation_path)}")
+        
         if chatbot.load_conversation(conversation_path):
+            app.logger.info(f"Conversation loaded successfully. History length: {len(chatbot.conversation_history)}")
+            
             # Send conversation history to client
             conversation_data = []
             for exchange in chatbot.conversation_history:
@@ -342,12 +383,15 @@ def handle_load_conversation(data):
                     }
                 ])
             
+            app.logger.info(f"Sending {len(conversation_data)} messages to client session {session_id}")
             emit('conversation_loaded', {
                 'messages': conversation_data,
                 'filename': filename,
                 'count': len(chatbot.conversation_history)
             })
+            app.logger.info(f"Emitted conversation_loaded event to session {session_id}")
         else:
+            app.logger.error(f"Failed to load conversation from {conversation_path}")
             emit('error', {'message': 'Failed to load conversation'})
             
     except Exception as e:
