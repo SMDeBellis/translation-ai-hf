@@ -6,5 +6,6 @@ processors/
 *.iml
 language-cache.json*
 */__pycache__/
+__pycache__/
 *_grammar_notes.md
 conversations/

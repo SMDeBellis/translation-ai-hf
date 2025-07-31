@@ -98,9 +98,7 @@ class ChatInterface {
         });
 
         this.socket.on('connection_status', (data) => {
-            if (data.connected) {
-                this.hideWelcomeMessage();
-            }
+            // Keep welcome message visible - it will be hidden when user sends first message
         });
     }
 
