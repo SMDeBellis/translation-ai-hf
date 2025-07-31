@@ -234,11 +234,8 @@ def handle_connect():
             'message': 'Connected to Spanish Tutor' if is_connected else 'Failed to connect to Ollama'
         })
         
-        if is_connected:
-            emit('system_message', {
-                'message': 'Welcome to Spanish Tutor! Ready to help you learn Spanish.',
-                'timestamp': datetime.now().isoformat()
-            })
+        # Welcome message is handled by static HTML template
+        # No need to send additional welcome messages via WebSocket
         
     except Exception as e:
         app.logger.error(f"Error during connection: {e}")
