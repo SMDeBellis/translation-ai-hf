@@ -265,7 +265,7 @@ body {
     max-width: 1200px;
     width: 100%;
     margin: 0 auto;
-    padding: var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-lg);
 }
 
 /* Chat Container */
@@ -283,21 +283,22 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-lg);
+    padding: 0.25rem var(--spacing-lg);
     background: var(--bg-tertiary);
     border-bottom: 1px solid var(--gray-200);
 }
 
 .chat-title h2 {
-    font-size: 1.375rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 0;
 }
 
 .chat-title p {
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    font-size: 0.7rem;
+    margin-top: 0.0625rem;
 }
 
 .chat-actions {
@@ -458,7 +459,7 @@ body {
 .chat-input-container {
     border-top: 1px solid var(--gray-200);
     background: var(--bg-primary);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-sm) var(--spacing-sm);
 }
 
 .chat-input-wrapper {
@@ -471,13 +472,13 @@ body {
     flex: 1;
     border: 1px solid var(--gray-300);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-md);
     font-family: var(--font-family);
     font-size: 1rem;
     line-height: 1.5;
     resize: none;
-    min-height: 44px;
-    max-height: 120px;
+    min-height: 36px;
+    max-height: 100px;
     background: var(--bg-primary);
     transition: var(--transition-fast);
 }
@@ -489,8 +490,8 @@ body {
 }
 
 .send-button {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     border: none;
     border-radius: var(--radius-lg);
     background: var(--primary-color);
@@ -697,7 +698,7 @@ kbd {
 .footer {
     background: var(--bg-primary);
     border-top: 1px solid var(--gray-200);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-sm);
     margin-top: auto;
 }
 
@@ -713,7 +714,7 @@ kbd {
 
 .footer-content p {
     color: var(--text-muted);
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     margin: 0;
 }
 
@@ -725,7 +726,7 @@ kbd {
 .footer-links a {
     color: var(--text-secondary);
     text-decoration: none;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     transition: var(--transition-fast);
 }
 

@@ -21,13 +21,13 @@ echo "🚀 Starting Flask backend server (port 8080)..."
 (cd web_gui && python app.py) &
 FLASK_PID=$!
 
-echo "⚡ Starting React development server (port 3000)..."
+echo "⚡ Starting React development server (port 3001)..."
 (cd frontend && npm run dev) &
 REACT_PID=$!
 
 echo ""
 echo "🌐 Services started:"
-echo "   React Dev Server:  http://localhost:3000"
+echo "   React Dev Server:  http://localhost:3001"
 echo "   Flask API Server:  http://localhost:8080"
 echo ""
 echo "💡 The React dev server will proxy API calls to Flask automatically"
