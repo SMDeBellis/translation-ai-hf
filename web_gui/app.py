@@ -332,13 +332,19 @@ def handle_new_conversation():
     session_id = request.sid
     
     try:
+        app.logger.info(f"Starting new conversation for session {session_id}")
         chatbot = chatbot_manager.get_chatbot(session_id)
-        chatbot.start_new_conversation()
         
+        # Clear the conversation history
+        chatbot.start_new_conversation()
+        app.logger.info(f"Conversation history cleared for session {session_id}")
+        
+        # Emit conversation cleared event
         emit('conversation_cleared', {
             'message': 'Started new conversation',
             'timestamp': datetime.now().isoformat()
         })
+        app.logger.info(f"Sent conversation_cleared event for session {session_id}")
         
     except Exception as e:
         app.logger.error(f"Error starting new conversation: {e}")
