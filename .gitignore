@@ -9,3 +9,8 @@ language-cache.json*
 __pycache__/
 *_grammar_notes.md
 conversations/
+
+# Log files
+*.log
+logs/
+web_gui/logs/
