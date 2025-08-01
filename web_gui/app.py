@@ -122,7 +122,7 @@ def index():
     """Serve the React SPA for all frontend routes."""
     try:
         # Try to serve the React build first
-        return send_from_directory(os.path.join(app.static_folder, 'public'), 'index.html')
+        return send_from_directory(app.static_folder, 'index.html')
     except:
         # Fallback to development message if React build doesn't exist
         return '''
@@ -134,7 +134,7 @@ def index():
             <pre>cd frontend && npm run build</pre>
             <p>Or for development:</p>
             <pre>cd frontend && npm run dev</pre>
-            <p>The development server will be available at <a href="http://localhost:3000">http://localhost:3000</a></p>
+            <p>The development server will be available at <a href="http://localhost:3001">http://localhost:3001</a></p>
         </body>
         </html>
         '''
