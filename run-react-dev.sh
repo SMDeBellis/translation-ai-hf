@@ -18,11 +18,11 @@ if ! python -c "import flask" 2>/dev/null; then
 fi
 
 echo "🚀 Starting Flask backend server (port 8080)..."
-cd web_gui && python app.py &
+(cd web_gui && python app.py) &
 FLASK_PID=$!
 
 echo "⚡ Starting React development server (port 3000)..."
-cd ../frontend && npm run dev &
+(cd frontend && npm run dev) &
 REACT_PID=$!
 
 echo ""
@@ -38,8 +38,27 @@ echo ""
 cleanup() {
     echo ""
     echo "🛑 Stopping servers..."
-    kill $FLASK_PID 2>/dev/null
-    kill $REACT_PID 2>/dev/null
+    
+    # Kill Flask server
+    if [ ! -z "$FLASK_PID" ]; then
+        kill $FLASK_PID 2>/dev/null
+        sleep 1
+        kill -9 $FLASK_PID 2>/dev/null
+    fi
+    
+    # Kill React server
+    if [ ! -z "$REACT_PID" ]; then
+        kill $REACT_PID 2>/dev/null
+        sleep 1
+        kill -9 $REACT_PID 2>/dev/null
+    fi
+    
+    # Also kill any remaining processes by name
+    pkill -f "python.*app.py" 2>/dev/null
+    pkill -f "npm.*dev" 2>/dev/null
+    pkill -f "vite" 2>/dev/null
+    
+    echo "✅ Servers stopped"
     exit
 }
 
