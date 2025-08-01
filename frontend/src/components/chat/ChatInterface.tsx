@@ -53,12 +53,10 @@ const ChatInterface: React.FC = () => {
     // Conversation cleared
     cleanupFunctions.push(
       on('conversation_cleared', (data) => {
+        console.log('🧹 Received conversation_cleared event');
+        console.log('📊 Current messages count before clear:', chatState.messages.length);
         clearMessages();
-        addMessage({
-          type: 'system',
-          message: 'Started new conversation',
-          timestamp: data.timestamp,
-        });
+        console.log('✅ Messages cleared - showing welcome message');
         showToast('New conversation started', 'success');
       })
     );

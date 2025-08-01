@@ -327,21 +327,40 @@ def handle_message(data):
         emit('error', {'message': f'Error: {str(e)}'})
 
 @socketio.on('new_conversation')
-def handle_new_conversation():
+def handle_new_conversation(data=None):
     """Handle new conversation request."""
     session_id = request.sid
     
+    app.logger.info(f"🔄 RECEIVED new_conversation event for session {session_id}")
+    print(f"🔄 RECEIVED new_conversation event for session {session_id}")
+    
     try:
-        chatbot = chatbot_manager.get_chatbot(session_id)
-        chatbot.start_new_conversation()
+        app.logger.info(f"Starting new conversation for session {session_id}")
+        print(f"Starting new conversation for session {session_id}")
         
+        chatbot = chatbot_manager.get_chatbot(session_id)
+        app.logger.info(f"Got chatbot instance for session {session_id}")
+        print(f"Got chatbot instance for session {session_id}")
+        
+        # Clear the conversation history
+        chatbot.start_new_conversation()
+        app.logger.info(f"Conversation history cleared for session {session_id}")
+        print(f"Conversation history cleared for session {session_id}")
+        
+        # Emit conversation cleared event
         emit('conversation_cleared', {
             'message': 'Started new conversation',
             'timestamp': datetime.now().isoformat()
         })
+        app.logger.info(f"✅ Sent conversation_cleared event for session {session_id}")
+        print(f"✅ Sent conversation_cleared event for session {session_id}")
         
     except Exception as e:
-        app.logger.error(f"Error starting new conversation: {e}")
+        error_msg = f"❌ Error starting new conversation: {e}"
+        app.logger.error(error_msg)
+        print(error_msg)
+        import traceback
+        print(traceback.format_exc())
         emit('error', {'message': f'Error: {str(e)}'})
 
 @socketio.on('load_conversation')

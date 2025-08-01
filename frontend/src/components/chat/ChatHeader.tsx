@@ -12,7 +12,9 @@ const ChatHeader: React.FC = () => {
     );
     
     if (confirmed) {
+      console.log('🔄 User confirmed new conversation - emitting new_conversation event');
       emit('new_conversation', undefined);
+      console.log('✅ new_conversation event emitted');
     }
   };
 
