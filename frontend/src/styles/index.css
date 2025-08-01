@@ -649,6 +649,10 @@ kbd {
     align-items: center;
     padding: var(--spacing-lg);
     border-bottom: 1px solid var(--gray-200);
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    z-index: 1;
 }
 
 .modal-header h3 {
