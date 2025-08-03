@@ -42,11 +42,28 @@ const GrammarNotesPage: React.FC = () => {
     }
   };
 
-  const handleRefresh = () => {
-    setLoading(true);
-    setError(null);
-    // Reload the component
-    window.location.reload();
+  const handleRefresh = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('🔄 Refreshing grammar notes data (not reloading page)');
+      
+      const response = await apiService.getGrammarNotes();
+      
+      if (response.error) {
+        setError(response.error);
+        showToast(response.error, 'error');
+      } else if (response.data) {
+        setNotes(response.data);
+        showToast('Grammar notes refreshed', 'success');
+      }
+    } catch (err) {
+      console.error('Failed to refresh grammar notes:', err);
+      setError('Failed to refresh grammar notes');
+      showToast('Failed to refresh grammar notes', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
