@@ -76,3 +76,32 @@ export interface GrammarNotesResponse {
   message?: string;
   file_size?: number;
 }
+
+// Authentication types
+export interface User {
+  id: number;
+  email: string;
+  display_name: string;
+  provider: 'email' | 'google' | 'facebook';
+  profile_picture_url?: string;
+  created_at: string;
+  user_directory_id: string;
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  user: User | null;
+  loading: boolean;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+  remember_me?: boolean;
+}
+
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+  display_name?: string;
+}

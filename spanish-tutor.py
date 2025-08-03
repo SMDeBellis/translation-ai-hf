@@ -16,15 +16,25 @@ from datetime import datetime
 from typing import Dict, Optional, List
 
 class SpanishTutorChatbot:
-    def __init__(self, ollama_host: str = "localhost:11434", model: str = "llama2"):
+    def __init__(self, ollama_host: str = "localhost:11434", model: str = "llama2", 
+                 user_info: Dict = None):
         self.ollama_host = ollama_host
         self.model = model
         self.base_url = f"http://{ollama_host}/api"
         self.conversation_history = []
-        self.grammar_notes_file = "spanish_grammar_notes.md"
-        self.conversations_dir = "conversations"
         self.current_conversation_file = None
         self.session_start_time = datetime.now()
+        
+        # Set up user-specific paths
+        if user_info:
+            self.user_id = user_info["user_id"]
+            self.grammar_notes_file = user_info["grammar_notes_file"]
+            self.conversations_dir = user_info["conversations_dir"]
+        else:
+            # Fallback to legacy paths for backwards compatibility
+            self.user_id = "legacy"
+            self.grammar_notes_file = "spanish_grammar_notes.md"
+            self.conversations_dir = "conversations"
         
         # Create conversations directory if it doesn't exist
         os.makedirs(self.conversations_dir, exist_ok=True)
