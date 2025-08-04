@@ -11,10 +11,17 @@ const ChatInterface: React.FC = () => {
   const { on } = useSocket();
   const { chatState, addMessage, setTyping, loadMessages, clearMessages } = useAppContext();
   const hasInitialized = useRef(false);
+  const cleanupFunctionsRef = useRef<(() => void)[]>([]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
+
+    console.log('🔧 ChatInterface: Setting up socket event listeners...');
+    
+    // Clear any existing cleanup functions first
+    cleanupFunctionsRef.current.forEach(cleanup => cleanup());
+    cleanupFunctionsRef.current = [];
 
     // Set up socket event listeners
     const cleanupFunctions: (() => void)[] = [];
@@ -102,11 +109,15 @@ const ChatInterface: React.FC = () => {
       })
     );
 
+    // Store cleanup functions in ref for later cleanup
+    cleanupFunctionsRef.current = cleanupFunctions;
+
     // Cleanup function
     return () => {
+      console.log('🧹 ChatInterface: Cleaning up socket event listeners...');
       cleanupFunctions.forEach(cleanup => cleanup());
     };
-  }, [on, addMessage, setTyping, loadMessages, clearMessages]);
+  }, [on, addMessage, setTyping, loadMessages, clearMessages]); // Include all dependencies now that they're stable
 
   // Debug logging for chat state
   console.log('ChatInterface render - messages count:', chatState.messages.length);

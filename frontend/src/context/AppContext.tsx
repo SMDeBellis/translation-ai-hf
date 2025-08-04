@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import type { ChatState, AppSettings, Message } from '@/types';
 import { generateId } from '@/utils';
 
@@ -135,8 +135,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     localStorage.setItem('spanish-tutor-settings', JSON.stringify(settings));
   }, [settings]);
 
-  // Chat actions
-  const addMessage = (message: Omit<Message, 'id'>) => {
+  // Chat actions - use useCallback to create stable references
+  const addMessage = useCallback((message: Omit<Message, 'id'>) => {
     chatDispatch({
       type: 'ADD_MESSAGE',
       payload: {
@@ -144,32 +144,32 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         id: generateId(),
       },
     });
-  };
+  }, []);
 
-  const setTyping = (isTyping: boolean) => {
+  const setTyping = useCallback((isTyping: boolean) => {
     chatDispatch({ type: 'SET_TYPING', payload: isTyping });
-  };
+  }, []);
 
-  const setConnectionStatus = (isConnected: boolean) => {
+  const setConnectionStatus = useCallback((isConnected: boolean) => {
     chatDispatch({ type: 'SET_CONNECTION_STATUS', payload: isConnected });
-  };
+  }, []);
 
-  const clearMessages = () => {
+  const clearMessages = useCallback(() => {
     chatDispatch({ type: 'CLEAR_MESSAGES' });
-  };
+  }, []);
 
-  const loadMessages = (messages: Message[]) => {
+  const loadMessages = useCallback((messages: Message[]) => {
     chatDispatch({ type: 'LOAD_MESSAGES', payload: messages });
-  };
+  }, []);
 
-  const setCurrentConversation = (filename: string | undefined) => {
+  const setCurrentConversation = useCallback((filename: string | undefined) => {
     chatDispatch({ type: 'SET_CURRENT_CONVERSATION', payload: filename });
-  };
+  }, []);
 
   // Settings actions
-  const updateSettings = (newSettings: Partial<AppSettings>) => {
+  const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
     settingsDispatch({ type: 'UPDATE_SETTINGS', payload: newSettings });
-  };
+  }, []);
 
   const contextValue: AppContextType = {
     chatState,
