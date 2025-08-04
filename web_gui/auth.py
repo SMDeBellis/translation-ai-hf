@@ -17,7 +17,7 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 import requests
 
-from .models import db, User, UserSession, create_default_preferences
+from web_gui.models import db, User, UserSession, create_default_preferences
 
 # Create authentication blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -53,7 +53,14 @@ def validate_password(password):
 
 def create_user_session(user, ip_address=None, user_agent=None):
     """Create a new user session record."""
-    session_id = session.get('session_id', secrets.token_urlsafe(32))
+    # Always generate a new unique session ID to avoid conflicts
+    session_id = secrets.token_urlsafe(32)
+    
+    # Deactivate any existing sessions for this user to prevent accumulation
+    existing_sessions = UserSession.query.filter_by(user_id=user.id, is_active=True).all()
+    for existing_session in existing_sessions:
+        existing_session.is_active = False
+    
     expires_at = datetime.utcnow() + timedelta(hours=24)
     
     user_session = UserSession(

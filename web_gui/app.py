@@ -24,8 +24,8 @@ from flask_login import LoginManager, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from models import db, User, UserSession, init_database
-from auth import auth_bp, require_auth_api
+from web_gui.models import db, User, UserSession, init_database
+from web_gui.auth import auth_bp, require_auth_api
 
 # Add parent directory to path to import the chatbot
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -87,10 +87,10 @@ login_manager.login_message = 'Please log in to access this page.'
 
 # Initialize rate limiter
 limiter = Limiter(
-    app,
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"]
 )
+limiter.init_app(app)
 
 # Register authentication routes
 app.register_blueprint(auth_bp)

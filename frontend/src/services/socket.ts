@@ -6,6 +6,7 @@ class SocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private callbackMap = new WeakMap<Function, Function>();
 
   connect(): Socket {
     if (this.socket?.connected) {
@@ -36,6 +37,8 @@ class SocketService {
       console.log('Disconnecting from WebSocket server...');
       this.socket.disconnect();
       this.socket = null;
+      // Clear the callback map when disconnecting
+      this.callbackMap = new WeakMap<Function, Function>();
     }
   }
 
@@ -54,11 +57,19 @@ class SocketService {
   ): void {
     if (this.socket) {
       console.log(`SocketService - Registering listener for event: ${event}`);
-      // Add a wrapper to debug the callback
-      const wrappedCallback = (data: any) => {
-        console.log(`🎯 Event '${event}' callback triggered with data:`, data);
-        callback(data);
-      };
+      
+      // Check if we already have a wrapped callback for this original callback
+      let wrappedCallback = this.callbackMap.get(callback);
+      
+      if (!wrappedCallback) {
+        // Create and store the wrapped callback
+        wrappedCallback = (data: any) => {
+          console.log(`🎯 Event '${event}' callback triggered with data:`, data);
+          callback(data);
+        };
+        this.callbackMap.set(callback, wrappedCallback);
+      }
+      
       this.socket.on(event as string, wrappedCallback);
     }
   }
@@ -67,8 +78,20 @@ class SocketService {
     event: K,
     callback?: (data: SocketEvents[K]) => void
   ): void {
-    if (this.socket) {
-      this.socket.off(event as string, callback);
+    if (this.socket && callback) {
+      // Get the wrapped callback from our map
+      const wrappedCallback = this.callbackMap.get(callback);
+      if (wrappedCallback) {
+        console.log(`SocketService - Removing listener for event: ${event}`);
+        this.socket.off(event as string, wrappedCallback);
+        this.callbackMap.delete(callback);
+      } else {
+        // Fallback to removing the original callback (shouldn't happen)
+        this.socket.off(event as string, callback);
+      }
+    } else if (this.socket) {
+      // Remove all listeners for this event
+      this.socket.off(event as string);
     }
   }
 
