@@ -18,7 +18,7 @@ if ! python -c "import flask" 2>/dev/null; then
 fi
 
 echo "🚀 Starting Flask backend server (port 8080)..."
-(cd web_gui && python app.py) &
+python -m web_gui.app &
 FLASK_PID=$!
 
 echo "⚡ Starting React development server (port 3001)..."
