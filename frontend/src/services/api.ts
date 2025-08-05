@@ -83,6 +83,19 @@ export const apiService = {
     }
   },
 
+  async getLatestConversation(): Promise<ApiResponse<{exists: boolean; filename?: string; session_start?: string; exchanges?: number; conversation?: any[]; user_id?: string; message?: string}>> {
+    try {
+      const response = await api.get('/conversations/latest');
+      return { data: response.data, status: response.status };
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      return {
+        error: axiosError.message,
+        status: axiosError.response?.status || 500,
+      };
+    }
+  },
+
   async getConversation(filename: string): Promise<ApiResponse<ConversationData>> {
     try {
       const response = await api.get(`/conversations/${encodeURIComponent(filename)}`);
