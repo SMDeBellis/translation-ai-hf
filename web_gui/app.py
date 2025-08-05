@@ -252,6 +252,46 @@ def list_conversations():
         app.logger.error(f"Error listing conversations for user {current_user.email}: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/conversations/latest')
+@require_auth_api
+def get_latest_conversation():
+    """Get the latest conversation for the authenticated user."""
+    try:
+        # Get user's chatbot instance
+        chatbot = chatbot_manager.get_chatbot(current_user)
+        
+        # Use the backend's method to find the latest conversation
+        conversations = chatbot.list_conversations()
+        
+        if not conversations:
+            return jsonify({
+                'exists': False,
+                'message': 'No conversations found',
+                'user_id': current_user.get_user_directory_id()
+            })
+        
+        # Get the latest conversation (first in the list since they're sorted by date desc)
+        latest_conversation = conversations[0]
+        conversation_file = os.path.basename(latest_conversation['file'])
+        
+        # Load the conversation data
+        with open(latest_conversation['file'], 'r', encoding='utf-8') as f:
+            conversation_data = json.load(f)
+        
+        app.logger.info(f"Retrieved latest conversation {conversation_file} for user {current_user.email}")
+        
+        return jsonify({
+            'exists': True,
+            'filename': conversation_file,
+            'session_start': latest_conversation['session_start'],
+            'exchanges': latest_conversation['exchanges'],
+            'conversation': conversation_data.get('conversation', []),
+            'user_id': current_user.get_user_directory_id()
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting latest conversation for user {current_user.email}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/conversations/<path:filename>')
 @require_auth_api
 def get_conversation(filename):
@@ -348,6 +388,15 @@ def handle_connect():
         
         # Initialize chatbot for this authenticated user
         chatbot = chatbot_manager.get_chatbot(current_user)
+        
+        # Load latest conversation into chatbot instance if it exists
+        try:
+            if not chatbot.conversation_history:  # Only load if no conversation is active
+                loaded = chatbot.load_latest_conversation()
+                if loaded:
+                    app.logger.info(f"Loaded latest conversation for user {current_user.email} - {len(chatbot.conversation_history)} exchanges")
+        except Exception as e:
+            app.logger.error(f"Failed to load latest conversation for user {current_user.email}: {e}")
         
         # Check Ollama connection
         is_connected = chatbot.check_ollama_connection()
@@ -461,6 +510,42 @@ def handle_new_conversation(data=None):
         error_msg = f"❌ Error starting new conversation for user {current_user.email}: {e}"
         app.logger.error(error_msg)
         emit('error', {'message': f'Error: {str(e)}'})
+
+@socketio.on('set_active_conversation')
+def handle_set_active_conversation(data):
+    """Handle setting the active conversation in the backend."""
+    session_id = request.sid
+    filename = data.get('filename')
+    
+    # Check authentication
+    if not current_user.is_authenticated:
+        emit('auth_required', {'message': 'Authentication required'})
+        return
+    
+    app.logger.info(f"Setting active conversation to {filename} for user {current_user.email}")
+    
+    try:
+        chatbot = chatbot_manager.get_chatbot(current_user)
+        
+        if filename:
+            conversation_path = os.path.join(chatbot.conversations_dir, filename)
+            
+            if os.path.exists(conversation_path):
+                # Load the specific conversation into the backend
+                if chatbot.load_conversation(conversation_path):
+                    app.logger.info(f"Backend loaded active conversation {filename} with {len(chatbot.conversation_history)} exchanges")
+                else:
+                    app.logger.error(f"Failed to load active conversation {filename}")
+            else:
+                app.logger.warning(f"Active conversation file not found: {conversation_path}")
+        else:
+            # Clear the conversation if no filename provided
+            chatbot.conversation_history = []
+            chatbot.current_conversation_file = None
+            app.logger.info("Cleared active conversation in backend")
+            
+    except Exception as e:
+        app.logger.error(f"Error setting active conversation: {e}")
 
 @socketio.on('load_conversation')
 def handle_load_conversation(data):

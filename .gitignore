@@ -10,6 +10,12 @@ __pycache__/
 *_grammar_notes.md
 conversations/
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+web_gui/instance/
+
 # Log files
 *.log
 logs/

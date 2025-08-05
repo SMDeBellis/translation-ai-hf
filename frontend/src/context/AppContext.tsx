@@ -164,6 +164,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const setCurrentConversation = useCallback((filename: string | undefined) => {
     chatDispatch({ type: 'SET_CURRENT_CONVERSATION', payload: filename });
+    
+    // Update localStorage with the active conversation
+    if (filename) {
+      localStorage.setItem('spanish-tutor-active-conversation', filename);
+    } else {
+      localStorage.removeItem('spanish-tutor-active-conversation');
+    }
   }, []);
 
   // Settings actions

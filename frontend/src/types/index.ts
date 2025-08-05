@@ -39,6 +39,7 @@ export interface SocketEvents {
   send_message: { message: string };
   new_conversation: void;
   load_conversation: { filename: string };
+  set_active_conversation: { filename: string | null };
   
   // Server to client
   user_message: { message: string; timestamp: string };
