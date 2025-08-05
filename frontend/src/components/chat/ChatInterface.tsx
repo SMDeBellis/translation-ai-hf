@@ -61,7 +61,7 @@ const ChatInterface: React.FC = () => {
 
     // Conversation cleared
     cleanupFunctions.push(
-      on('conversation_cleared', (data) => {
+      on('conversation_cleared', (_data) => {
         console.log('🧹 Received conversation_cleared event');
         console.log('📊 Current messages count before clear:', chatState.messages.length);
         clearMessages();
