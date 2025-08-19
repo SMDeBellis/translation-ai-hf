@@ -167,7 +167,7 @@ const SettingsPage: React.FC = () => {
         {/* Data Management */}
         <div className="settings-section">
           <h2>Data Management</h2>
-          <p>Manage your conversations and grammar notes</p>
+          <p>Manage your conversations and data</p>
 
           <div className="setting-actions">
             <button className="btn btn-secondary">
@@ -175,9 +175,6 @@ const SettingsPage: React.FC = () => {
             </button>
             <button className="btn btn-warning">
               🗑️ Clear All Conversations
-            </button>
-            <button className="btn btn-warning">
-              📝 Clear Grammar Notes
             </button>
           </div>
         </div>

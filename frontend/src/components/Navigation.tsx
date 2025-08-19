@@ -53,13 +53,6 @@ const Navigation: React.FC = () => {
             Chat
           </Link>
           <Link 
-            to="/grammar-notes" 
-            className={`nav-link ${isActive('/grammar-notes') ? 'active' : ''}`}
-          >
-            <span className="nav-link-icon">📝</span>
-            Grammar Notes
-          </Link>
-          <Link 
             to="/settings" 
             className={`nav-link ${isActive('/settings') ? 'active' : ''}`}
           >

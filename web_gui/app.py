@@ -127,13 +127,11 @@ class WebChatbotManager:
                     
                     # Ensure user directories exist
                     os.makedirs(user_paths['conversations_dir'], exist_ok=True)
-                    os.makedirs(os.path.dirname(user_paths['grammar_notes_file']), exist_ok=True)
                     
                     # Create chatbot with user-specific info
                     user_info = {
                         'user_id': user_paths['user_id'],
-                        'conversations_dir': user_paths['conversations_dir'],
-                        'grammar_notes_file': user_paths['grammar_notes_file']
+                        'conversations_dir': user_paths['conversations_dir']
                     }
                     
                     self.chatbots[user_key] = SpanishTutorChatbot(
@@ -173,7 +171,6 @@ chatbot_manager = WebChatbotManager()
 # React SPA routes
 @app.route('/')
 @app.route('/conversations')
-@app.route('/grammar-notes')
 @app.route('/settings')
 def index():
     """Serve the React SPA for all frontend routes."""
@@ -317,58 +314,7 @@ def get_conversation(filename):
         app.logger.error(f"Error getting conversation {filename} for user {current_user.email}: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/grammar-notes')
-@require_auth_api
-def get_grammar_notes():
-    """Get grammar notes content for the authenticated user."""
-    try:
-        # Get user's chatbot instance
-        chatbot = chatbot_manager.get_chatbot(current_user)
-        
-        if not os.path.exists(chatbot.grammar_notes_file):
-            return jsonify({
-                'content': '',
-                'exists': False,
-                'message': 'No grammar notes file found',
-                'user_id': current_user.get_user_directory_id()
-            })
-        
-        with open(chatbot.grammar_notes_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        return jsonify({
-            'content': content,
-            'exists': True,
-            'file_size': os.path.getsize(chatbot.grammar_notes_file),
-            'user_id': current_user.get_user_directory_id()
-        })
-    except Exception as e:
-        app.logger.error(f"Error getting grammar notes for user {current_user.email}: {e}")
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/grammar-notes/export')
-@require_auth_api
-def export_grammar_notes():
-    """Export grammar notes as a file for the authenticated user."""
-    try:
-        # Get user's chatbot instance
-        chatbot = chatbot_manager.get_chatbot(current_user)
-        
-        if not os.path.exists(chatbot.grammar_notes_file):
-            return jsonify({'error': 'No grammar notes to export'}), 404
-        
-        user_id = current_user.get_user_directory_id()
-        filename = f'spanish_grammar_notes_{user_id}_{datetime.now().strftime("%Y%m%d")}.md'
-        
-        return send_file(
-            chatbot.grammar_notes_file,
-            as_attachment=True,
-            download_name=filename,
-            mimetype='text/markdown'
-        )
-    except Exception as e:
-        app.logger.error(f"Error exporting grammar notes for user {current_user.email}: {e}")
-        return jsonify({'error': str(e)}), 500
 
 # WebSocket Events
 @socketio.on('connect')

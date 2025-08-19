@@ -28,12 +28,10 @@ class SpanishTutorChatbot:
         # Set up user-specific paths
         if user_info:
             self.user_id = user_info["user_id"]
-            self.grammar_notes_file = user_info["grammar_notes_file"]
             self.conversations_dir = user_info["conversations_dir"]
         else:
             # Fallback to legacy paths for backwards compatibility
             self.user_id = "legacy"
-            self.grammar_notes_file = "spanish_grammar_notes.md"
             self.conversations_dir = "conversations"
         
         # Create conversations directory if it doesn't exist
@@ -50,7 +48,7 @@ class SpanishTutorChatbot:
 Always be patient, encouraging, and educational. When users make mistakes, gently correct them and explain why. 
 You can respond in both English and Spanish as appropriate for the learning context.
 
-IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR] so it can be automatically saved to notes."""
+"""
 
     def check_ollama_connection(self) -> bool:
         """Check if Ollama is running and accessible."""
@@ -112,49 +110,7 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
         except requests.exceptions.RequestException as e:
             return f"Error connecting to Ollama: {str(e)}"
 
-    def save_grammar_rule(self, response: str) -> None:
-        """Extract and save grammar rules from bot responses."""
-        if "[GRAMMAR]" in response:
-            try:
-                # Extract the grammar explanation
-                grammar_content = response[response.find("[GRAMMAR]") + 9:].strip()
-                
-                # Create timestamp
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                # Format the note
-                note_entry = f"\n## Grammar Rule - {timestamp}\n\n{grammar_content}\n\n---\n"
-                
-                # Append to file
-                with open(self.grammar_notes_file, "a", encoding="utf-8") as f:
-                    if not os.path.exists(self.grammar_notes_file) or os.path.getsize(self.grammar_notes_file) == 0:
-                        f.write("# Spanish Grammar Notes\n\n")
-                        f.write("*Automatically generated grammar rules from Spanish tutor sessions*\n\n")
-                    f.write(note_entry)
-                
-                print("📝 Grammar rule saved to notes!")
-                
-            except Exception as e:
-                print(f"⚠️ Could not save grammar rule: {str(e)}")
 
-    def view_grammar_notes(self) -> None:
-        """Display saved grammar notes."""
-        if not os.path.exists(self.grammar_notes_file):
-            print("📚 No grammar notes found yet. Start asking about grammar rules!")
-            return
-        
-        try:
-            with open(self.grammar_notes_file, "r", encoding="utf-8") as f:
-                content = f.read()
-                if content.strip():
-                    print("\n📖 Your Saved Grammar Notes:")
-                    print("=" * 50)
-                    print(content)
-                    print("=" * 50)
-                else:
-                    print("📚 Grammar notes file is empty. Start asking about grammar rules!")
-        except Exception as e:
-            print(f"⚠️ Error reading grammar notes: {str(e)}")
     
     def get_conversation_filename(self, timestamp: datetime = None) -> str:
         """Generate a filename for conversation storage."""
@@ -280,7 +236,6 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
         print("• Type 'quit' or 'salir' to exit")
         print("• Type 'help' or 'ayuda' for assistance")
         print("• Type 'clear' to clear conversation history")
-        print("• Type 'notes' to view saved grammar rules")
         print("• Type 'conversations' to list saved conversations")
         print("• Type 'load <number>' to load a specific conversation")
         print("• Type 'new' to start a fresh conversation")
@@ -300,7 +255,6 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
             print("• Ask questions like: 'How do you say hello in Spanish?'")
             print("• Practice: '¿Cómo estás?' or 'What does 'gracias' mean?'")
             print("• Request: 'Explain the difference between ser and estar'")
-            print("• Type 'notes' to view saved grammar rules")
             print("• Type 'conversations' to see all saved conversations")
             print("• Type 'load <number>' to continue a previous conversation")
             print("• Type 'new' to start fresh (current conversation is auto-saved)")
@@ -311,9 +265,6 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
             print("\n🗑️ Conversation history cleared!")
             return False
         
-        elif user_input_lower in ['notes', 'notas', 'grammar']:
-            self.view_grammar_notes()
-            return False
         
         elif user_input_lower in ['conversations', 'conversaciones', 'list']:
             self.display_conversations()
@@ -378,8 +329,6 @@ IMPORTANT: When you explain grammar rules, start your explanation with [GRAMMAR]
                 
                 if response:
                     print(f"Tutor: {response}\n")
-                    # Save grammar rules automatically
-                    self.save_grammar_rule(response)
                 else:
                     print("❌ Sorry, I couldn't process your message. Please try again.\n")
 

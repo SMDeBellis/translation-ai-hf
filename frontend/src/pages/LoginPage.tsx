@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import type { LoginCredentials } from '@/types';
 
 const LoginPage: React.FC = () => {
-  const { login, googleLogin, facebookLogin, authState } = useAuth();
+  const { login, authState } = useAuth();
   const navigate = useNavigate();
   
   const [credentials, setCredentials] = useState<LoginCredentials>({

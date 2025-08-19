@@ -35,7 +35,6 @@ const AboutModal: React.FC = () => {
           <ul>
             <li>Real-time chat interface with AI tutor</li>
             <li>Automatic conversation saving and management</li>
-            <li>Grammar notes collection and export</li>
             <li>Responsive design for all devices</li>
             <li>Cross-platform web accessibility</li>
           </ul>

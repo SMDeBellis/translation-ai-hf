@@ -339,10 +339,6 @@ const api = {
         return this.request(`/conversations/${encodeURIComponent(filename)}`);
     },
 
-    // Grammar notes
-    async getGrammarNotes() {
-        return this.request('/grammar-notes');
-    }
 };
 
 // Global keyboard shortcuts

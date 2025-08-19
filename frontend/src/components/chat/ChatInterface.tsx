@@ -86,7 +86,7 @@ const ChatInterface: React.FC = () => {
         console.log('📨 Raw messages from server:', data.messages);
         
         const messages = data.messages
-          .filter(msg => msg.message && msg.message.trim()) // Filter out empty messages
+          .filter((msg: any) => msg.message && msg.message.trim()) // Filter out empty messages
           .map((msg, index) => ({
             id: `loaded-${index}`,
             type: msg.type as 'user' | 'bot' | 'system',
@@ -200,7 +200,7 @@ const ChatInterface: React.FC = () => {
                     timestamp: exchange.timestamp,
                   }
                 ])
-                .filter(msg => msg.message && msg.message.trim());
+                .filter((msg: any) => msg.message && msg.message.trim());
 
               if (messages.length > 0) {
                 loadMessages(messages);
@@ -251,7 +251,7 @@ const ChatInterface: React.FC = () => {
                     timestamp: exchange.timestamp,
                   }
                 ])
-                .filter(msg => msg.message && msg.message.trim());
+                .filter((msg: any) => msg.message && msg.message.trim());
 
               if (messages.length > 0) {
                 loadMessages(messages);

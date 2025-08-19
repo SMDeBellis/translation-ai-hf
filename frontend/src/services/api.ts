@@ -2,8 +2,7 @@ import axios, { AxiosResponse, AxiosError } from 'axios';
 import type { 
   ApiResponse, 
   Conversation, 
-  ConversationData, 
-  GrammarNotesResponse 
+  ConversationData
 } from '@/types';
 
 // Create axios instance with default config
@@ -109,40 +108,6 @@ export const apiService = {
     }
   },
 
-  // Grammar notes
-  async getGrammarNotes(): Promise<ApiResponse<GrammarNotesResponse>> {
-    try {
-      const response = await api.get('/grammar-notes');
-      return { data: response.data, status: response.status };
-    } catch (error) {
-      const axiosError = error as AxiosError;
-      return {
-        error: axiosError.message,
-        status: axiosError.response?.status || 500,
-      };
-    }
-  },
-
-  async exportGrammarNotes(): Promise<void> {
-    try {
-      const response = await api.get('/grammar-notes/export', {
-        responseType: 'blob',
-      });
-      
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `spanish_grammar_notes_${new Date().toISOString().split('T')[0]}.md`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Failed to export grammar notes:', error);
-      throw error;
-    }
-  },
 };
 
 export default apiService;

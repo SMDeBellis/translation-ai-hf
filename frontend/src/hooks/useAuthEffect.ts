@@ -21,7 +21,7 @@ export const useAuthEffect = () => {
     if (hasInitializedRef.current && currentUserId && currentUserId !== previousUserId) {
       clearMessages();
       setCurrentConversation(undefined);
-      console.log(`🔐 User changed from ${previousUserId} to ${currentUserId} (${authState.user.email}) - cleared chat data for privacy`);
+      console.log(`🔐 User changed from ${previousUserId} to ${currentUserId} (${authState.user?.email}) - cleared chat data for privacy`);
     }
 
     // Update the previous user ID reference
