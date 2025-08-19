@@ -9,7 +9,6 @@ import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ChatPage from '@/pages/ChatPage';
 import ConversationsPage from '@/pages/ConversationsPage';
-import GrammarNotesPage from '@/pages/GrammarNotesPage';
 import SettingsPage from '@/pages/SettingsPage';
 import '@/styles/index.css';
 
@@ -36,13 +35,6 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Layout>
                     <ConversationsPage />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/grammar-notes" element={
-                <ProtectedRoute>
-                  <Layout>
-                    <GrammarNotesPage />
                   </Layout>
                 </ProtectedRoute>
               } />

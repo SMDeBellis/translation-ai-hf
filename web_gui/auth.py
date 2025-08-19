@@ -121,7 +121,6 @@ def register():
         # Create user directory structure
         user_paths = user.get_data_paths()
         os.makedirs(user_paths['conversations_dir'], exist_ok=True)
-        os.makedirs(os.path.dirname(user_paths['grammar_notes_file']), exist_ok=True)
         
         # Create default preferences
         create_default_preferences(user.id)
@@ -283,8 +282,7 @@ def google_auth():
             # Create user directory structure
             user_paths = user.get_data_paths()
             os.makedirs(user_paths['conversations_dir'], exist_ok=True)
-            os.makedirs(os.path.dirname(user_paths['grammar_notes_file']), exist_ok=True)
-            
+                
             # Create default preferences
             create_default_preferences(user.id)
         
@@ -386,8 +384,7 @@ def facebook_auth():
             # Create user directory structure
             user_paths = user.get_data_paths()
             os.makedirs(user_paths['conversations_dir'], exist_ok=True)
-            os.makedirs(os.path.dirname(user_paths['grammar_notes_file']), exist_ok=True)
-            
+                
             # Create default preferences
             create_default_preferences(user.id)
         

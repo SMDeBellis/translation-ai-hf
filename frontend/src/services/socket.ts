@@ -6,7 +6,7 @@ class SocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private callbackMap = new WeakMap<Function, Function>();
+  private callbackMap = new WeakMap<(...args: any[]) => void, (...args: any[]) => void>();
 
   connect(): Socket {
     if (this.socket?.connected) {
@@ -38,7 +38,7 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
       // Clear the callback map when disconnecting
-      this.callbackMap = new WeakMap<Function, Function>();
+      this.callbackMap = new WeakMap<(...args: any[]) => void, (...args: any[]) => void>();
     }
   }
 

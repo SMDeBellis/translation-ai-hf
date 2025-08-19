@@ -62,7 +62,7 @@ export interface ApiResponse<T = any> {
 }
 
 export interface ConversationData {
-  messages: Array<{
+  conversation: Array<{
     user: string;
     bot: string;
     timestamp: string;
@@ -71,12 +71,6 @@ export interface ConversationData {
   model: string;
 }
 
-export interface GrammarNotesResponse {
-  content: string;
-  exists: boolean;
-  message?: string;
-  file_size?: number;
-}
 
 // Authentication types
 export interface User {

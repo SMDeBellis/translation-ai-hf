@@ -51,7 +51,7 @@ class User(UserMixin, db.Model):
         return f"user_{hashlib.sha256(self.email.encode()).hexdigest()[:12]}"
     
     def get_data_paths(self):
-        """Get user-specific file paths for conversations and grammar notes."""
+        """Get user-specific file paths for conversations and settings."""
         user_dir_id = self.get_user_directory_id()
         base_dir = os.path.join('web_gui', 'users', user_dir_id)
         
@@ -59,7 +59,6 @@ class User(UserMixin, db.Model):
             'user_id': user_dir_id,
             'user_dir': base_dir,
             'conversations_dir': os.path.join(base_dir, 'conversations'),
-            'grammar_notes_file': os.path.join(base_dir, 'grammar_notes.md'),
             'settings_file': os.path.join(base_dir, 'settings.json')
         }
     
